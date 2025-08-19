@@ -15,13 +15,13 @@ import { validateCEP, validatePhone } from '@/utils/validation';
 import { User, MapPin } from 'lucide-react';
 import type { PersonFormData } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCEPMask, useMask } from '@/hooks/useMask';
 
 const personSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  birthDate: z.string().min(1, 'Data de nascimento é obrigatória'),
   phone: z.string().refine(validatePhone, 'Telefone inválido'),
   email: z.string().email('E-mail inválido').or(z.literal('')),
-  relationshipType: z.enum(['eleitor', 'parceiro', 'representante', 'colaborador_assessor', 'fornecedor_prestador', 'voluntario', 'candidato', 'outros'] as const, {
+  relationshipType: z.enum(['cidadao_civil', 'parceiro', 'representante', 'colaborador_assessor', 'fornecedor_prestador', 'voluntario', 'candidato', 'outros'] as const, {
     required_error: 'Tipo de vínculo é obrigatório',
   }),
   address: z.object({
@@ -45,13 +45,11 @@ const PersonFormPage: React.FC = () => {
   const { user } = useAuth();
   const isEditing = Boolean(id);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCepLoading, setIsCepLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
     reset,
   } = useForm<PersonFormValues>({
@@ -69,7 +67,16 @@ const PersonFormPage: React.FC = () => {
     },
   });
 
-  const watchedCep = watch('address.cep');
+  // Máscaras para os campos
+  const phoneMask = useMask('phone');
+  const cepMask = useCEPMask((address) => {
+    if (address) {
+      setValue('address.street', address.street || '');
+      setValue('address.neighborhood', address.neighborhood || '');
+      setValue('address.city', address.city || '');
+      setValue('address.state', address.state || '');
+    }
+  });
 
   // Carregar dados da pessoa se estiver editando
   useEffect(() => {
@@ -79,9 +86,9 @@ const PersonFormPage: React.FC = () => {
           setIsLoading(true);
           const person = await personService.getPersonById(id);
           if (person) {
+            // Atualizar formulário
             reset({
               name: person.name,
-              birthDate: person.birthDate.toISOString().split('T')[0],
               phone: person.phone || '',
               email: person.email || '',
               relationshipType: person.relationshipType,
@@ -96,6 +103,14 @@ const PersonFormPage: React.FC = () => {
               },
               observations: person.notes || '',
             });
+            
+            // Sincronizar máscaras com dados carregados
+            if (person.phone) {
+              phoneMask.setFormattedValue(person.phone);
+            }
+            if (person.address?.cep) {
+              cepMask.setFormattedValue(person.address.cep);
+            }
           }
         } catch (error) {
           toast.error('Erro ao carregar dados da pessoa');
@@ -106,58 +121,43 @@ const PersonFormPage: React.FC = () => {
       };
       loadPerson();
     }
-  }, [id, isEditing, reset, navigate]);
+  }, [id, isEditing, reset, navigate, phoneMask, cepMask]);
 
-  // Buscar endereço por CEP
-  useEffect(() => {
-    const fetchAddress = async () => {
-      if (watchedCep && validateCEP(watchedCep)) {
-        try {
-          setIsCepLoading(true);
-          const address = await cepService.getAddressByCEP(watchedCep);
-          if (address) {
-            setValue('address.street', address.street || '');
-            setValue('address.neighborhood', address.neighborhood || '');
-            setValue('address.city', address.city || '');
-            setValue('address.state', address.state || '');
-          }
-        } catch (error) {
-          toast.error('Erro ao buscar endereço pelo CEP');
-        } finally {
-          setIsCepLoading(false);
-        }
-      }
-    };
 
-    const timeoutId = setTimeout(fetchAddress, 500);
-    return () => clearTimeout(timeoutId);
-  }, [watchedCep, setValue]);
 
   const onSubmit = async (data: PersonFormValues) => {
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
     try {
       setIsLoading(true);
       
       const personData: PersonFormData = {
         name: data.name,
-        birthDate: data.birthDate,
-        phone: data.phone,
+        phone: phoneMask.getRawValue(), // Usar valor sem máscara
         email: data.email || undefined,
         relationshipType: data.relationshipType,
-        address: data.address,
+        address: {
+          ...data.address,
+          cep: cepMask.getRawValue() // Usar CEP sem máscara
+        },
         notes: data.observations || undefined,
       };
 
       if (isEditing && id) {
-        await personService.updatePerson(id, personData, user?.id || 'system');
+        await personService.updatePerson(id, personData);
         toast.success('Pessoa atualizada com sucesso!');
       } else {
-        await personService.createPerson(personData, user?.id || 'system');
+        await personService.createPerson(personData);
         toast.success('Pessoa cadastrada com sucesso!');
       }
       
       navigate('/search');
     } catch (error) {
-      toast.error(isEditing ? 'Erro ao atualizar pessoa' : 'Erro ao cadastrar pessoa');
+      console.error('Erro ao salvar pessoa:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao salvar pessoa');
     } finally {
       setIsLoading(false);
     }
@@ -198,24 +198,16 @@ const PersonFormPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="birthDate">Data de Nascimento *</Label>
-                <Input
-                  id="birthDate"
-                  type="date"
-                  {...register('birthDate')}
-                />
-                {errors.birthDate && (
-                  <p className="text-sm text-red-500">{errors.birthDate.message}</p>
-                )}
-              </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone *</Label>
                 <Input
                   id="phone"
-                  {...register('phone')}
-                  placeholder="(00) 00000-0000"
+                  value={phoneMask.value}
+                  onChange={phoneMask.handleInputChange}
+                  placeholder={phoneMask.placeholder}
+                  maxLength={phoneMask.maxLength}
                 />
                 {errors.phone && (
                   <p className="text-sm text-red-500">{errors.phone.message}</p>
@@ -245,7 +237,7 @@ const PersonFormPage: React.FC = () => {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">Selecione o tipo de vínculo</option>
-                <option value="eleitor">Eleitor</option>
+                <option value="cidadao_civil">Cidadão/Civil</option>
                 <option value="parceiro">Parceiro</option>
                 <option value="representante">Representante</option>
                 <option value="colaborador_assessor">Colaborador/Assessor</option>
@@ -275,16 +267,21 @@ const PersonFormPage: React.FC = () => {
                 <div className="relative">
                   <Input
                     id="cep"
-                    {...register('address.cep')}
-                    placeholder="00000-000"
-                    maxLength={9}
+                    value={cepMask.value}
+                    onChange={cepMask.handleInputChange}
+                    placeholder={cepMask.placeholder}
+                    maxLength={cepMask.maxLength}
+                    className={cepMask.error ? 'border-red-500' : ''}
                   />
-                  {isCepLoading && (
+                  {cepMask.isLoading && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                       <LoadingSpinner size="sm" />
                     </div>
                   )}
                 </div>
+                {cepMask.error && (
+                  <p className="text-sm text-red-500">{cepMask.error}</p>
+                )}
                 {errors.address?.cep && (
                   <p className="text-sm text-red-500">{errors.address.cep.message}</p>
                 )}
@@ -295,7 +292,9 @@ const PersonFormPage: React.FC = () => {
                 <Input
                   id="street"
                   {...register('address.street')}
-                  placeholder="Digite o logradouro"
+                  placeholder="Ex: Rua das Flores, Av. Paulista"
+                  className="bg-gray-50"
+                  readOnly={cepMask.isLoading}
                 />
                 {errors.address?.street && (
                   <p className="text-sm text-red-500">{errors.address.street.message}</p>
@@ -307,7 +306,7 @@ const PersonFormPage: React.FC = () => {
                 <Input
                   id="number"
                   {...register('address.number')}
-                  placeholder="123"
+                  placeholder="Ex: 123, 45A"
                 />
                 {errors.address?.number && (
                   <p className="text-sm text-red-500">{errors.address.number.message}</p>
@@ -319,7 +318,7 @@ const PersonFormPage: React.FC = () => {
                 <Input
                   id="complement"
                   {...register('address.complement')}
-                  placeholder="Apto, Bloco, etc."
+                  placeholder="Ex: Apto 101, Bloco B, Casa 2"
                 />
               </div>
 
@@ -328,7 +327,9 @@ const PersonFormPage: React.FC = () => {
                 <Input
                   id="neighborhood"
                   {...register('address.neighborhood')}
-                  placeholder="Digite o bairro"
+                  placeholder="Ex: Centro, Vila Madalena"
+                  className="bg-gray-50"
+                  readOnly={cepMask.isLoading}
                 />
                 {errors.address?.neighborhood && (
                   <p className="text-sm text-red-500">{errors.address.neighborhood.message}</p>
@@ -340,7 +341,9 @@ const PersonFormPage: React.FC = () => {
                 <Input
                   id="city"
                   {...register('address.city')}
-                  placeholder="Digite a cidade"
+                  placeholder="Ex: São Paulo, Rio de Janeiro"
+                  className="bg-gray-50"
+                  readOnly={cepMask.isLoading}
                 />
                 {errors.address?.city && (
                   <p className="text-sm text-red-500">{errors.address.city.message}</p>
@@ -352,8 +355,11 @@ const PersonFormPage: React.FC = () => {
                 <Input
                   id="state"
                   {...register('address.state')}
-                  placeholder="SP"
+                  placeholder="Ex: SP, RJ, MG"
                   maxLength={2}
+                  className="bg-gray-50 uppercase"
+                  readOnly={cepMask.isLoading}
+                  style={{ textTransform: 'uppercase' }}
                 />
                 {errors.address?.state && (
                   <p className="text-sm text-red-500">{errors.address.state.message}</p>

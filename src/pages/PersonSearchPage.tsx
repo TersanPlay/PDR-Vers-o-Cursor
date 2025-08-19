@@ -18,12 +18,8 @@ const PersonSearchPage: React.FC = () => {
   const { canCreate, canEdit, canDelete, canExport } = usePermissions()
   const canViewSensitive = true // Temporário - ajustar conforme necessário
   
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
-    name: '',
-    phone: '',
-    city: '',
-    state: '',
-  });
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
   
   const [results, setResults] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,23 +27,28 @@ const PersonSearchPage: React.FC = () => {
   const searchTimeoutRef = useRef<number | null>(null);
 
   const handleSearch = useCallback(async () => {
-    // Verificar se pelo menos um campo foi preenchido
-    const hasFilters = Object.values(searchFilters).some(value => value.trim() !== '');
-    if (!hasFilters) {
-      toast.error('Preencha pelo menos um campo para realizar a busca');
+    // Verificar se o campo de busca foi preenchido
+    if (!searchQuery.trim()) {
       return;
     }
 
     try {
       setIsLoading(true);
-      const searchResult = await personService.searchPersons(searchFilters, 'current-user');
+      // Criar filtros baseados na query unificada
+      const filters: SearchFilters = {
+        name: searchQuery,
+        phone: searchQuery,
+        email: searchQuery,
+        relationshipType: undefined // Será tratado no backend se necessário
+      };
+      
+      const searchResult = await personService.searchPersons(filters, 'current-user');
       const searchResults = searchResult.people;
       setResults(searchResults);
       setHasSearched(true);
       
-      if (searchResults.length === 0) {
-        toast.info('Nenhuma pessoa encontrada com os critérios informados');
-      } else {
+      // Não exibir notificação quando não há resultados - o card já mostra a mensagem
+      if (searchResults.length > 0) {
         toast.success(`${searchResults.length} pessoa(s) encontrada(s)`);
       }
     } catch (error) {
@@ -55,7 +56,7 @@ const PersonSearchPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchFilters]);
+  }, [searchQuery, toast]);
 
   // Busca automática com debounce
   useEffect(() => {
@@ -64,16 +65,14 @@ const PersonSearchPage: React.FC = () => {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    // Verificar se há pelo menos um filtro preenchido
-    const hasFilters = Object.values(searchFilters).some(value => value.trim() !== '');
-    
-    if (hasFilters) {
+    // Verificar se há texto na busca
+    if (searchQuery.trim()) {
       // Criar novo timeout para busca
       searchTimeoutRef.current = setTimeout(() => {
         handleSearch();
       }, 500); // 500ms de debounce
     } else {
-      // Se não há filtros, limpar resultados mas manter hasSearched se já foi feita uma busca
+      // Se não há texto, limpar resultados mas manter hasSearched se já foi feita uma busca
       setResults([]);
       // Não resetar hasSearched para manter a seção de resultados visível
     }
@@ -84,15 +83,11 @@ const PersonSearchPage: React.FC = () => {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchFilters, handleSearch]);
+  }, [searchQuery, handleSearch]);
 
   const handleClearFilters = () => {
-    setSearchFilters({
-      name: '',
-      phone: '',
-      city: '',
-      state: '',
-    });
+    setSearchQuery('');
+    setSearchFilters({});
     setResults([]);
     setHasSearched(false);
   };
@@ -152,52 +147,23 @@ const PersonSearchPage: React.FC = () => {
       {/* Filtros de Busca */}
       <FormCard
         title="Filtros de Busca"
-        description="Digite nos campos abaixo - a busca é feita automaticamente enquanto você digita"
+        description="Digite para buscar por nome, telefone, e-mail ou tipo de vínculo - a busca é feita automaticamente enquanto você digita"
         icon={Search}
         variant="blue"
       >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="search">Buscar Pessoa</Label>
               <Input
-                id="name"
-                placeholder="Digite o nome"
-                value={searchFilters.name}
-                onChange={(e) => setSearchFilters(prev => ({ ...prev, name: e.target.value }))}
+                id="search"
+                placeholder="Digite nome, telefone, e-mail ou tipo de vínculo..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="text-base"
               />
-            </div>
-
-
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input
-                id="phone"
-                placeholder="(00) 00000-0000"
-                value={searchFilters.phone}
-                onChange={(e) => setSearchFilters(prev => ({ ...prev, phone: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="city">Cidade</Label>
-              <Input
-                id="city"
-                placeholder="Digite a cidade"
-                value={searchFilters.city}
-                onChange={(e) => setSearchFilters(prev => ({ ...prev, city: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="state">Estado</Label>
-              <Input
-                id="state"
-                placeholder="SP"
-                value={searchFilters.state}
-                onChange={(e) => setSearchFilters(prev => ({ ...prev, state: e.target.value }))}
-                maxLength={2}
-              />
+              <p className="text-sm text-muted-foreground">
+                Exemplos: "João Silva", "(11) 99999-9999", "joao@email.com", "cidadão", "parceiro"
+              </p>
             </div>
           </div>
 
@@ -214,13 +180,13 @@ const PersonSearchPage: React.FC = () => {
               )}
             </div>
             <Button variant="outline" onClick={handleClearFilters}>
-              Limpar Filtros
+              Limpar Busca
             </Button>
           </div>
       </FormCard>
 
       {/* Resultados */}
-      {(hasSearched || Object.values(searchFilters).some(value => value.trim() !== '')) && (
+      {(hasSearched || Object.values(searchFilters).some(value => value.trim() !== '')) ? (
         <FormCard
           title="Resultados da Busca"
           description={`${results.length} pessoa(s) encontrada(s)`}
@@ -347,9 +313,36 @@ const PersonSearchPage: React.FC = () => {
               </div>
             )}
         </FormCard>
+      ) : (
+        <FormCard
+          title="Nenhum Dado Disponível"
+          description="Não há pessoas cadastradas no sistema"
+          icon={User}
+          variant="blue"
+        >
+          <div className="text-center py-12">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <User className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Sistema sem dados</h3>
+            <p className="text-gray-600 mb-4 max-w-md mx-auto">
+              Ainda não há pessoas cadastradas no sistema. 
+              Comece adicionando a primeira pessoa para começar a usar as funcionalidades de busca.
+            </p>
+            {canCreate() && (
+              <Button 
+                onClick={() => navigate('/pessoa/novo')}
+                className="mt-4"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Cadastrar Primeira Pessoa
+              </Button>
+            )}
+          </div>
+        </FormCard>
       )}
 
-      {/* Informações sobre LGPD */}
+      {/* Card de Informações sobre LGPD */}
       <FormCard
         title="Informações sobre Privacidade"
         description="Proteção de dados conforme LGPD"

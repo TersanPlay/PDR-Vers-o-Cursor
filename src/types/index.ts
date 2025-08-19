@@ -41,7 +41,7 @@ export interface AuthContextType {
 
 // Tipos para pessoa
 export type RelationshipType = 
-  | 'eleitor' 
+  | 'cidadao_civil' 
   | 'parceiro' 
   | 'representante'
   | 'colaborador_assessor'
@@ -199,7 +199,6 @@ export interface AuditLog {
 // Tipos para formulários
 export interface PersonFormData {
   name: string
-  birthDate: string
   email?: string
   phone?: string
   whatsapp?: string

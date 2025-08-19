@@ -3,6 +3,8 @@ import { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card'
 
+type FormCardVariant = 'blue' | 'green' | 'purple' | 'orange' | 'red'
+
 interface FormCardProps {
   /** Título do card */
   title: string
@@ -13,7 +15,7 @@ interface FormCardProps {
   /** Conteúdo do card */
   children: React.ReactNode
   /** Variante da cor da borda */
-  variant?: 'blue' | 'green' | 'purple' | 'orange' | 'red'
+  variant?: FormCardVariant
   /** Classes CSS adicionais */
   className?: string
   /** Classes CSS adicionais para o cabeçalho */
@@ -22,45 +24,45 @@ interface FormCardProps {
   contentClassName?: string
 }
 
-const borderVariants = {
+const borderVariants: Record<FormCardVariant, string> = {
   blue: 'border-l-blue-500',
   green: 'border-l-green-500',
   purple: 'border-l-purple-500',
   orange: 'border-l-orange-500',
   red: 'border-l-red-500'
-}
+} as const
 
-const headerGradientVariants = {
+const headerGradientVariants: Record<FormCardVariant, string> = {
   blue: 'from-blue-50 to-blue-100 border-blue-200',
   green: 'from-green-50 to-green-100 border-green-200',
   purple: 'from-purple-50 to-purple-100 border-purple-200',
   orange: 'from-orange-50 to-orange-100 border-orange-200',
   red: 'from-red-50 to-red-100 border-red-200'
-}
+} as const
 
-const iconVariants = {
+const iconVariants: Record<FormCardVariant, string> = {
   blue: 'text-blue-600',
   green: 'text-green-600',
   purple: 'text-purple-600',
   orange: 'text-orange-600',
   red: 'text-red-600'
-}
+} as const
 
-const titleVariants = {
+const titleVariants: Record<FormCardVariant, string> = {
   blue: 'text-blue-800',
   green: 'text-green-800',
   purple: 'text-purple-800',
   orange: 'text-orange-800',
   red: 'text-red-800'
-}
+} as const
 
-const descriptionVariants = {
+const descriptionVariants: Record<FormCardVariant, string> = {
   blue: 'text-blue-700/70',
   green: 'text-green-700/70',
   purple: 'text-purple-700/70',
   orange: 'text-orange-700/70',
   red: 'text-red-700/70'
-}
+} as const
 
 /**
  * Componente de card para formulários com borda lateral colorida
@@ -147,7 +149,7 @@ export const SimpleFormCard: React.FC<Omit<FormCardProps, 'headerClassName'>> = 
 /**
  * Card compacto para uso em seções menores
  */
-export const CompactFormCard: React.FC<FormCardProps> = ({
+export const CompactFormCard: React.FC<Omit<FormCardProps, 'headerClassName'>> = ({
   title,
   description,
   icon: Icon,
