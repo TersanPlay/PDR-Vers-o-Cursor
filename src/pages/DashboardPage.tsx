@@ -247,8 +247,8 @@ const DashboardPage: React.FC = () => {
                           {interaction.description}
                         </p>
                         <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>{interaction.date}</span>
-                          <span>por {interaction.author}</span>
+                          <span>{new Date(interaction.date).toLocaleDateString('pt-BR')}</span>
+                          <span>Status: {interaction.status}</span>
                         </div>
                       </div>
                       <Badge 
@@ -276,7 +276,7 @@ const DashboardPage: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {topNeighborhoods.map((neighborhood, index) => {
+                {topNeighborhoods.map((neighborhood) => {
                   const maxCount = Math.max(...topNeighborhoods.map(n => n.count));
                   const percentage = (neighborhood.count / maxCount) * 100;
                   

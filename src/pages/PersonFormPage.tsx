@@ -7,17 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import { PageHeader, FormCard, LoadingSpinner } from '@/components/ui';
+import { useToast } from '@/components/ui/use-toast';
 import { personService } from '@/services/personService';
 import { cepService } from '@/services/cepService';
-import { validateCPF, validateCEP, validatePhone, validateEmail } from '@/utils/validation';
-import { User, MapPin, Users } from 'lucide-react';
-import type { PersonFormData, RelationshipType } from '@/types';
+import { validateCEP, validatePhone } from '@/utils/validation';
+import { User, MapPin } from 'lucide-react';
+import type { PersonFormData } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 const personSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  cpf: z.string().refine(validateCPF, 'CPF inválido'),
-  rg: z.string().min(1, 'RG é obrigatório'),
   birthDate: z.string().min(1, 'Data de nascimento é obrigatória'),
   phone: z.string().refine(validatePhone, 'Telefone inválido'),
   email: z.string().email('E-mail inválido').or(z.literal('')),
@@ -33,8 +33,6 @@ const personSchema = z.object({
     city: z.string().min(1, 'Cidade é obrigatória'),
     state: z.string().min(2, 'Estado é obrigatório'),
   }),
-  motherName: z.string().optional(),
-  fatherName: z.string().optional(),
   observations: z.string().optional(),
 });
 
@@ -43,6 +41,8 @@ type PersonFormValues = z.infer<typeof personSchema>;
 const PersonFormPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const isEditing = Boolean(id);
   const [isLoading, setIsLoading] = useState(false);
   const [isCepLoading, setIsCepLoading] = useState(false);
@@ -77,19 +77,24 @@ const PersonFormPage: React.FC = () => {
       const loadPerson = async () => {
         try {
           setIsLoading(true);
-          const person = await personService.getById(id);
+          const person = await personService.getPersonById(id);
           if (person) {
             reset({
               name: person.name,
-              cpf: person.cpf,
-              rg: person.rg,
-              birthDate: person.birthDate,
-              phone: person.phone,
+              birthDate: person.birthDate.toISOString().split('T')[0],
+              phone: person.phone || '',
               email: person.email || '',
-              address: person.address,
-              motherName: person.motherName || '',
-              fatherName: person.fatherName || '',
-              observations: person.observations || '',
+              relationshipType: person.relationshipType,
+              address: person.address || {
+                cep: '',
+                street: '',
+                number: '',
+                complement: '',
+                neighborhood: '',
+                city: '',
+                state: ''
+              },
+              observations: person.notes || '',
             });
           }
         } catch (error) {
@@ -111,10 +116,10 @@ const PersonFormPage: React.FC = () => {
           setIsCepLoading(true);
           const address = await cepService.getAddressByCEP(watchedCep);
           if (address) {
-            setValue('address.street', address.street);
-            setValue('address.neighborhood', address.neighborhood);
-            setValue('address.city', address.city);
-            setValue('address.state', address.state);
+            setValue('address.street', address.street || '');
+            setValue('address.neighborhood', address.neighborhood || '');
+            setValue('address.city', address.city || '');
+            setValue('address.state', address.state || '');
           }
         } catch (error) {
           toast.error('Erro ao buscar endereço pelo CEP');
@@ -133,18 +138,20 @@ const PersonFormPage: React.FC = () => {
       setIsLoading(true);
       
       const personData: PersonFormData = {
-        ...data,
+        name: data.name,
+        birthDate: data.birthDate,
+        phone: data.phone,
         email: data.email || undefined,
-        motherName: data.motherName || undefined,
-        fatherName: data.fatherName || undefined,
-        observations: data.observations || undefined,
+        relationshipType: data.relationshipType,
+        address: data.address,
+        notes: data.observations || undefined,
       };
 
       if (isEditing && id) {
-        await personService.update(id, personData);
+        await personService.updatePerson(id, personData, user?.id || 'system');
         toast.success('Pessoa atualizada com sucesso!');
       } else {
-        await personService.create(personData);
+        await personService.createPerson(personData, user?.id || 'system');
         toast.success('Pessoa cadastrada com sucesso!');
       }
       
@@ -157,45 +164,27 @@ const PersonFormPage: React.FC = () => {
   };
 
   if (isLoading && isEditing) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Carregando dados...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner size="lg" text="Carregando dados..." centered />;
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-l-4 border-l-green-500">
-        <div className="flex items-center gap-4">
-          <div className="bg-green-500 rounded-full p-3">
-            <User className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {isEditing ? 'Editar Pessoa' : 'Cadastrar Nova Pessoa'}
-            </h1>
-            <p className="text-gray-600">
-              {isEditing ? 'Atualize as informações da pessoa' : 'Preencha os dados para cadastrar uma nova pessoa'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={isEditing ? 'Editar Pessoa' : 'Cadastrar Nova Pessoa'}
+        description={isEditing ? 'Atualize as informações da pessoa' : 'Preencha os dados para cadastrar uma nova pessoa'}
+        icon={User}
+        variant="green"
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Dados Pessoais */}
-        <Card className="border-l-4 border-l-blue-500 shadow-sm">
-          <CardHeader className="bg-blue-50">
-            <CardTitle className="flex items-center gap-2 text-gray-900">
-              <User className="h-5 w-5 text-blue-500" />
-              Dados Pessoais
-            </CardTitle>
-            <CardDescription className="text-gray-600">Informações básicas da pessoa</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <FormCard
+          title="Dados Pessoais"
+          description="Informações básicas da pessoa"
+          icon={User}
+          variant="blue"
+        >
+          <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome Completo *</Label>
@@ -206,31 +195,6 @@ const PersonFormPage: React.FC = () => {
                 />
                 {errors.name && (
                   <p className="text-sm text-red-500">{errors.name.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cpf">CPF *</Label>
-                <Input
-                  id="cpf"
-                  {...register('cpf')}
-                  placeholder="000.000.000-00"
-                  maxLength={14}
-                />
-                {errors.cpf && (
-                  <p className="text-sm text-red-500">{errors.cpf.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="rg">RG *</Label>
-                <Input
-                  id="rg"
-                  {...register('rg')}
-                  placeholder="Digite o RG"
-                />
-                {errors.rg && (
-                  <p className="text-sm text-red-500">{errors.rg.message}</p>
                 )}
               </div>
 
@@ -272,26 +236,6 @@ const PersonFormPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="motherName">Nome da Mãe</Label>
-                <Input
-                  id="motherName"
-                  {...register('motherName')}
-                  placeholder="Digite o nome da mãe"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="fatherName">Nome do Pai</Label>
-                <Input
-                  id="fatherName"
-                  {...register('fatherName')}
-                  placeholder="Digite o nome do pai"
-                />
-              </div>
-            </div>
-
             {/* Tipo de Vínculo */}
             <div className="space-y-2">
               <Label htmlFor="relationshipType">Tipo de Vínculo *</Label>
@@ -314,19 +258,17 @@ const PersonFormPage: React.FC = () => {
                 <p className="text-sm text-red-500">{errors.relationshipType.message}</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </FormCard>
 
         {/* Endereço */}
-        <Card className="border-l-4 border-l-orange-500 shadow-sm">
-          <CardHeader className="bg-orange-50">
-            <CardTitle className="flex items-center gap-2 text-gray-900">
-              <MapPin className="h-5 w-5 text-orange-500" />
-              Endereço
-            </CardTitle>
-            <CardDescription className="text-gray-600">Informações de endereço</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <FormCard
+          title="Endereço"
+          description="Informações de endereço"
+          icon={MapPin}
+          variant="orange"
+        >
+          <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="cep">CEP *</Label>
@@ -339,7 +281,7 @@ const PersonFormPage: React.FC = () => {
                   />
                   {isCepLoading && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                      <LoadingSpinner size="sm" />
                     </div>
                   )}
                 </div>
@@ -418,8 +360,8 @@ const PersonFormPage: React.FC = () => {
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </FormCard>
 
         {/* Observações */}
         <Card>
@@ -453,7 +395,7 @@ const PersonFormPage: React.FC = () => {
           <Button type="submit" disabled={isLoading}>
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <LoadingSpinner size="sm" className="mr-2" />
                 {isEditing ? 'Atualizando...' : 'Cadastrando...'}
               </>
             ) : (

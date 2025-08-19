@@ -5,7 +5,6 @@ import { User, Cabinet, CabinetRegistrationData } from '../types'
  * Em produção, deve se comunicar com uma API real
  */
 class AuthService {
-  private readonly _API_BASE_URL = '/api/auth'
 
   /**
    * Realiza login do usuário
@@ -20,7 +19,7 @@ class AuthService {
       return response
     } catch (error) {
       console.error('Erro no login:', error)
-      throw new Error('Credenciais inválidas')
+      throw new Error('Credenciais invalidas')
     }
   }
 
@@ -36,7 +35,7 @@ class AuthService {
       return user
     } catch (error) {
       console.error('Erro ao validar token:', error)
-      throw new Error('Token inválido')
+      throw new Error('Token invalido')
     }
   }
 
@@ -114,13 +113,23 @@ class AuthService {
         password: 'visualizador123',
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date()
+      },
+      {
+        id: '4',
+        name: 'Carlos Chefe de Gabinete',
+        email: 'chefe@gabinete.gov.br',
+        role: 'chefe_gabinete' as const,
+        password: 'chefe123',
+        cabinetId: '1', // Associado ao Gabinete do Vereador João Silva
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date()
       }
     ]
 
     const user = mockUsers.find(u => u.email === email && u.password === password)
     
     if (!user) {
-      throw new Error('Credenciais inválidas')
+      throw new Error('Credenciais invalidas')
     }
 
     const { password: _, ...userWithoutPassword } = user
@@ -139,7 +148,7 @@ class AuthService {
     // Extrai ID do usuário do token mock
     const tokenParts = token.split('-')
     if (tokenParts.length < 3 || tokenParts[0] !== 'mock' || tokenParts[1] !== 'token') {
-      throw new Error('Token inválido')
+      throw new Error('Token invalido')
     }
 
     const userId = tokenParts[2]
@@ -169,13 +178,22 @@ class AuthService {
         role: 'visualizador' as const,
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date()
+      },
+      {
+        id: '4',
+        name: 'Carlos Chefe de Gabinete',
+        email: 'chefe@gabinete.gov.br',
+        role: 'chefe_gabinete' as const,
+        cabinetId: '1', // Associado ao Gabinete do Vereador João Silva
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date()
       }
     ]
 
     const user = mockUsers.find(u => u.id === userId)
     
     if (!user) {
-      throw new Error('Usuário não encontrado')
+      throw new Error('Usuario nao encontrado')
     }
 
     return user
@@ -270,6 +288,10 @@ class AuthService {
       institutionalEmail: registrationData.institutionalEmail,
       website: registrationData.website,
       socialMedia: registrationData.socialMedia,
+      adminName: registrationData.adminName,
+      adminEmail: registrationData.adminEmail,
+      status: 'pendente' as const,
+      registrationDate: new Date(),
       createdAt: new Date(),
       updatedAt: new Date()
     }

@@ -81,7 +81,7 @@ export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout
+  let timeout: number
   
   return (...args: Parameters<T>) => {
     clearTimeout(timeout)
@@ -156,7 +156,11 @@ export function capitalizeWords(str: string): string {
  * @returns String sem acentos
  */
 export function removeAccents(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return str.replace(/[àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ]/gi, (match) => {
+    const accents = 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
+    const normal = 'aaaaaaaceeeeiiiidnooooooouuuuyby'
+    return normal[accents.indexOf(match.toLowerCase())]
+  })
 }
 
 /**

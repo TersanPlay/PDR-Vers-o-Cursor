@@ -3,7 +3,6 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/button'
 import { FileText, Eye, EyeOff, AlertCircle } from 'lucide-react'
-import { cn } from '../lib/utils'
 
 /**
  * Página de login do sistema
@@ -45,6 +44,12 @@ export const LoginPage: React.FC = () => {
       description: 'Acesso completo ao sistema'
     },
     {
+      role: 'Chefe de Gabinete',
+      email: 'chefe@gabinete.gov.br',
+      password: 'chefe123',
+      description: 'Gerencia credenciais do próprio gabinete'
+    },
+    {
       role: 'Assessor',
       email: 'assessor@gabinete.gov.br',
       password: 'assessor123',
@@ -64,8 +69,32 @@ export const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden py-12 px-4 sm:px-6 lg:px-8">
+      {/* Background with gradient and geometric shapes */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"></div>
+      
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-indigo-400/15 to-cyan-400/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-purple-300/10 to-pink-300/10 rounded-full blur-2xl animate-bounce delay-500"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-gradient-to-br from-cyan-300/10 to-blue-300/10 rounded-full blur-xl animate-bounce delay-700"></div>
+      </div>
+      
+      {/* Geometric pattern overlay */}
+      <div className="absolute inset-0 opacity-5">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" className="text-gray-900" />
+        </svg>
+      </div>
+      <div className="max-w-md w-full space-y-8 relative z-10">
+        {/* Main login card with backdrop blur */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
         {/* Header */}
         <div>
           <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-primary">
@@ -164,7 +193,7 @@ export const LoginPage: React.FC = () => {
                   Entrando...
                 </div>
               ) : (
-                'Entrar'
+                "Entrar"
               )}
             </Button>
           </div>
@@ -172,7 +201,7 @@ export const LoginPage: React.FC = () => {
           {/* Link para Cadastro */}
           <div className="text-center">
             <p className="text-sm text-gray-600">
-              Não tem uma conta?{' '}
+              Não tem uma conta?{" "}
               <Link
                 to="/cadastro"
                 className="font-medium text-primary hover:text-primary/80 transition-colors"
@@ -238,6 +267,7 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

@@ -35,7 +35,7 @@ class CEPService {
       const cleanCEP = this.cleanCEP(cep)
       
       if (!this.isValidCEP(cleanCEP)) {
-        throw new Error('CEP inválido')
+        throw new Error('CEP invalido')
       }
 
       // Fazer requisição para ViaCEP
@@ -52,7 +52,7 @@ class CEPService {
 
       // Verificar se CEP foi encontrado
       if (data.erro) {
-        throw new Error('CEP não encontrado')
+        throw new Error('CEP nao encontrado')
       }
 
       // Converter para formato interno
@@ -83,7 +83,7 @@ class CEPService {
     try {
       // Validar parâmetros
       if (!uf || !city || !street) {
-        throw new Error('UF, cidade e logradouro são obrigatórios')
+        throw new Error('UF, cidade e logradouro sao obrigatorios')
       }
 
       if (uf.length !== 2) {

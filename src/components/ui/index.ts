@@ -1,0 +1,22 @@
+// Componentes UI reutilizáveis
+export { LoadingSpinner, PageLoadingSpinner, ButtonLoadingSpinner } from './LoadingSpinner'
+export { PageHeader, CompactPageHeader } from './PageHeader'
+export { FormCard, SimpleFormCard, CompactFormCard } from './FormCard'
+export { Pagination } from './Pagination'
+
+// Componentes shadcn/ui existentes
+export { Button } from './button'
+export { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card'
+export { Input } from './input'
+export { Label } from './label'
+export { Textarea } from './textarea'
+export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
+export { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './dialog'
+export { Badge } from './badge'
+export { Avatar, AvatarFallback, AvatarImage } from './avatar'
+export { Checkbox } from './checkbox'
+export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs'
+export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './table'
+export { Progress } from './progress'
+export { toast } from './use-toast'
+export { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from './dropdown-menu'

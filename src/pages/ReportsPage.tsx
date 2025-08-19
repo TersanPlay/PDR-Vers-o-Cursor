@@ -1,29 +1,44 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+// Input component import removed since it's not being used
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-import { personService } from '@/services/personService';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+// import { Pagination } from '../components/ui/Pagination';
+import { useToast } from '@/components/ui/use-toast';
+// Removed unused import of personService
 import { usePermissions } from '@/contexts/AuthContext';
-import { Download, FileText, Users, Calendar, Activity, MessageSquare, Phone, Mail, MapPin, User } from 'lucide-react';
-import type { ReportFilter, InteractionType, InteractionStatus, Interaction, Person } from '@/types';
+import { Download, FileText, Users, Calendar, Activity, MessageSquare, Phone, Mail, MapPin, User, BarChart3, FileSpreadsheet, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import type { InteractionType, InteractionStatus } from '@/types';
+// Bibliotecas para exportação
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+
+// Declaração de tipos para jsPDF autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => void;
+    lastAutoTable?: { finalY: number };
+  }
+}
 
 const ReportsPage: React.FC = () => {
   const { canExport } = usePermissions();
-  
-  const [reportFilters, setReportFilters] = useState<ReportFilter>({
-    startDate: '',
-    endDate: '',
-    city: '',
-    state: '',
-    ageMin: undefined,
-    ageMax: undefined,
-  });
+  const { toast } = useToast();
   
 
+  
+  const [selectedReportType, setSelectedReportType] = useState<string>('');
+  const [reportData, setReportData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [metrics, setMetrics] = useState({
     totalPeople: 0,
     newThisMonth: 0,
@@ -90,52 +105,327 @@ const ReportsPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    loadMetrics();
-  }, []);
+  // Funções de paginação
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
-  const handleGenerateReport = async () => {
-    if (!canExport) {
-      toast.error('Você não tem permissão para gerar relatórios');
+  const handleItemsPerPageChange = (newItemsPerPage: string) => {
+    setItemsPerPage(parseInt(newItemsPerPage));
+    setCurrentPage(1); // Reset para primeira página
+  };
+
+  // Calcular dados paginados
+  const totalPages = Math.ceil(reportData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = reportData.slice(startIndex, endIndex);
+
+  // Reset página quando dados mudam
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [reportData, selectedReportType]);
+
+  // Função para carregar dados do relatório baseado no tipo selecionado
+  const loadReportData = useCallback(async (reportType: string) => {
+    if (!reportType) {
+      setReportData([]);
       return;
     }
 
     try {
       setIsLoading(true);
       
-      // Buscar pessoas com base nos filtros
-      const searchFilters = {
-        city: reportFilters.city,
-        state: reportFilters.state,
+      // Simulação de dados - em produção viria de uma API
+      let data: any[] = [];
+      
+      switch (reportType) {
+        case 'interactions-by-type':
+          data = metrics.interactionsByType.map((item, index) => ({
+            id: index + 1,
+            tipo: item.label,
+            quantidade: item.count,
+            percentual: ((item.count / metrics.totalInteractions) * 100).toFixed(1) + '%'
+          }));
+          break;
+          
+        case 'interactions-by-status':
+          data = metrics.interactionsByStatus.map((item, index) => ({
+            id: index + 1,
+            status: item.label,
+            quantidade: item.count,
+            percentual: ((item.count / metrics.totalInteractions) * 100).toFixed(1) + '%'
+          }));
+          break;
+          
+        case 'people-by-relationship':
+          data = metrics.peopleByRelationshipType.map((item, index) => ({
+            id: index + 1,
+            vinculo: item.label,
+            quantidade: item.count,
+            percentual: ((item.count / metrics.totalPeople) * 100).toFixed(1) + '%'
+          }));
+          break;
+          
+        case 'distribution-by-neighborhood':
+          data = metrics.byNeighborhood.map((item, index) => ({
+            id: index + 1,
+            bairro: item.neighborhood,
+            quantidade: item.count,
+            percentual: ((item.count / metrics.totalPeople) * 100).toFixed(1) + '%'
+          }));
+          break;
+          
+        case 'distribution-by-age':
+          data = metrics.byAge.map((item, index) => ({
+            id: index + 1,
+            faixaEtaria: item.range + ' anos',
+            quantidade: item.count,
+            percentual: ((item.count / metrics.totalPeople) * 100).toFixed(1) + '%'
+          }));
+          break;
+          
+        default:
+          data = [];
+      }
+      
+      setReportData(data);
+    } catch (error) {
+      toast.error('Erro ao carregar dados do relatório');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [metrics, toast]);
+
+  // Carregar dados quando o tipo de relatório mudar
+  useEffect(() => {
+    if (selectedReportType && Object.keys(metrics).length > 0) {
+      loadReportData(selectedReportType);
+    }
+  }, [selectedReportType, metrics, loadReportData]);
+
+  useEffect(() => {
+    loadMetrics();
+  }, []);
+
+  const handleExportReport = async (format: 'pdf' | 'excel') => {
+    if (!canExport) {
+      toast.error('Você não tem permissão para gerar relatórios');
+      return;
+    }
+
+    if (!selectedReportType || reportData.length === 0) {
+      toast.error('Selecione um tipo de relatório primeiro');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      const reportTypeNames = {
+        'interactions-by-type': 'Interações por Tipo',
+        'interactions-by-status': 'Interações por Status', 
+        'people-by-relationship': 'Pessoas por Tipo de Vínculo',
+        'distribution-by-neighborhood': 'Distribuição por Bairro',
+        'distribution-by-age': 'Distribuição por Faixa Etária'
       };
       
-      const people = await personService.search(searchFilters);
-      
-      // Filtrar por data se especificada
-      let filteredPeople = people;
-      if (reportFilters.startDate || reportFilters.endDate) {
-        filteredPeople = people.filter(person => {
-          const createdDate = new Date(person.createdAt);
-          const start = reportFilters.startDate ? new Date(reportFilters.startDate) : new Date('1900-01-01');
-          const end = reportFilters.endDate ? new Date(reportFilters.endDate) : new Date();
-          return createdDate >= start && createdDate <= end;
+      const reportName = reportTypeNames[selectedReportType as keyof typeof reportTypeNames];
+      const timestamp = new Date().toISOString().split('T')[0];
+      const fileName = `${reportName.replace(/\s+/g, '_')}_${timestamp}`;
+
+      if (format === 'pdf') {
+        // Exportar como PDF
+        const doc = new jsPDF();
+        
+        // Verificar se o jsPDF foi inicializado corretamente
+        if (!doc) {
+          throw new Error('Falha ao inicializar o gerador de PDF');
+        }
+        
+        // Título do relatório
+        doc.setFontSize(16);
+        doc.text(reportName, 20, 20);
+        
+        // Data de geração
+        doc.setFontSize(10);
+        doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, 30);
+        
+        // Preparar dados para a tabela
+        const tableData = reportData.map(item => {
+          const categoria = item.tipo || item.status || item.vinculo || item.bairro || item.faixaEtaria;
+          
+          // Validar se os dados essenciais existem
+          if (!categoria || item.quantidade === undefined || !item.percentual) {
+            console.warn('Dados incompletos encontrados:', item);
+            return [
+              categoria || 'N/A',
+              (item.quantidade || 0).toString(),
+              item.percentual || '0%'
+            ];
+          }
+          
+          return [
+            categoria,
+            item.quantidade.toString(),
+            item.percentual
+          ];
         });
-      }
-      
-      // Filtrar por idade se especificada
-      if (reportFilters.ageMin !== undefined || reportFilters.ageMax !== undefined) {
-        filteredPeople = filteredPeople.filter(person => {
-          const age = new Date().getFullYear() - new Date(person.birthDate).getFullYear();
-          const minAge = reportFilters.ageMin || 0;
-          const maxAge = reportFilters.ageMax || 150;
-          return age >= minAge && age <= maxAge;
+
+        // Cabeçalhos da tabela
+        let headers = ['Categoria', 'Quantidade', 'Percentual'];
+        if (selectedReportType === 'interactions-by-type') {
+          headers = ['Tipo de Interação', 'Quantidade', 'Percentual'];
+        } else if (selectedReportType === 'interactions-by-status') {
+          headers = ['Status', 'Quantidade', 'Percentual'];
+        } else if (selectedReportType === 'people-by-relationship') {
+          headers = ['Tipo de Vínculo', 'Quantidade', 'Percentual'];
+        } else if (selectedReportType === 'distribution-by-neighborhood') {
+          headers = ['Bairro', 'Quantidade', 'Percentual'];
+        } else if (selectedReportType === 'distribution-by-age') {
+          headers = ['Faixa Etária', 'Quantidade', 'Percentual'];
+        }
+
+        // Calcular totais para adicionar ao final da tabela
+        const totalQuantidade = reportData.reduce((sum, item) => sum + item.quantidade, 0);
+        const totalPercentual = reportData.reduce((sum, item) => {
+          const numericPercent = parseFloat(item.percentual.replace('%', ''));
+          return sum + numericPercent;
+        }, 0);
+
+        // Adicionar linha de total
+        const tableDataWithTotal = [
+          ...tableData,
+          ['TOTAL', totalQuantidade.toString(), `${totalPercentual.toFixed(1)}%`]
+        ];
+
+        // Adicionar tabela ao PDF
+        if (!doc.autoTable) {
+          throw new Error('Plugin autoTable não está disponível');
+        }
+        
+        doc.autoTable({
+          head: [headers],
+          body: tableDataWithTotal,
+          startY: 40,
+          theme: 'grid',
+          styles: {
+            fontSize: 10,
+            cellPadding: 3,
+          },
+          headStyles: {
+            fillColor: [41, 128, 185],
+            textColor: 255,
+            fontStyle: 'bold',
+          },
+          // Estilo especial para a linha de total
+          didParseCell: (data: any) => {
+            if (data.row.index === tableDataWithTotal.length - 1) {
+              data.cell.styles.fillColor = [240, 240, 240];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
         });
+
+        // Adicionar informações adicionais no final do PDF
+        const finalY = doc.lastAutoTable?.finalY || 100;
+        
+        doc.setFontSize(10);
+        doc.text(`Total de registros: ${reportData.length}`, 20, finalY + 15);
+        doc.text(`Maior valor: ${Math.max(...reportData.map(item => item.quantidade)).toLocaleString()}`, 20, finalY + 25);
+        doc.text(`Menor valor: ${Math.min(...reportData.map(item => item.quantidade)).toLocaleString()}`, 20, finalY + 35);
+        
+        const mediaQuantidade = (totalQuantidade / reportData.length).toFixed(0);
+        doc.text(`Média: ${parseInt(mediaQuantidade).toLocaleString()}`, 20, finalY + 45);
+
+        // Salvar o PDF
+        doc.save(`${fileName}.pdf`);
+        
+      } else if (format === 'excel') {
+        // Exportar como Excel
+        const worksheetData = reportData.map((item, index) => {
+          const categoria = item.tipo || item.status || item.vinculo || item.bairro || item.faixaEtaria;
+          const percentualNumerico = parseFloat(item.percentual.replace('%', ''));
+          
+          return {
+            'ID': index + 1,
+            'Categoria': categoria,
+            'Quantidade': item.quantidade,
+            'Percentual_Numerico': percentualNumerico,
+            'Percentual_Formatado': item.percentual
+          };
+        });
+
+        // Calcular estatísticas para adicionar no Excel
+        const totalQuantidade = reportData.reduce((sum, item) => sum + item.quantidade, 0);
+        const totalPercentual = reportData.reduce((sum, item) => {
+          const numericPercent = parseFloat(item.percentual.replace('%', ''));
+          return sum + numericPercent;
+        }, 0);
+        const mediaQuantidade = Math.round(totalQuantidade / reportData.length);
+        const maiorValor = Math.max(...reportData.map(item => item.quantidade));
+        const menorValor = Math.min(...reportData.map(item => item.quantidade));
+
+        // Criar workbook e worksheet
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.json_to_sheet([]);
+
+        // Melhorias no Excel: Adicionar metadados e formatação
+        const headerInfo = [
+          [`Relatório: ${reportName}`],
+          [`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`],
+          [`Hora de Geração: ${new Date().toLocaleTimeString('pt-BR')}`],
+          [`Total de Registros: ${reportData.length}`],
+          [''],
+          ['ESTATÍSTICAS RESUMIDAS:'],
+          [`Total Geral: ${totalQuantidade.toLocaleString()}`],
+          [`Média: ${mediaQuantidade.toLocaleString()}`],
+          [`Maior Valor: ${maiorValor.toLocaleString()}`],
+          [`Menor Valor: ${menorValor.toLocaleString()}`],
+          [`Percentual Total: ${totalPercentual.toFixed(1)}%`],
+          [''],
+          ['DADOS DETALHADOS:']
+        ];
+
+        // Inserir informações do cabeçalho
+        XLSX.utils.sheet_add_aoa(worksheet, headerInfo, { origin: 'A1' });
+        
+        // Reposicionar os dados principais
+        const dataStartRow = headerInfo.length + 1;
+        XLSX.utils.sheet_add_json(worksheet, worksheetData, { 
+          origin: `A${dataStartRow}`,
+          skipHeader: false 
+        });
+
+        // Adicionar linha de totais no final dos dados
+        const totalRowPosition = dataStartRow + worksheetData.length + 1;
+        const totalRowData = [
+          ['', 'TOTAL', totalQuantidade, totalPercentual, `${totalPercentual.toFixed(1)}%`]
+        ];
+        XLSX.utils.sheet_add_aoa(worksheet, totalRowData, { origin: `A${totalRowPosition}` });
+
+        // Configurar largura das colunas
+        const columnWidths = [
+          { wch: 8 },  // ID
+          { wch: 30 }, // Categoria
+          { wch: 15 }, // Quantidade
+          { wch: 18 }, // Percentual numérico
+          { wch: 18 }  // Percentual formatado
+        ];
+        worksheet['!cols'] = columnWidths;
+
+        // Adicionar worksheet ao workbook
+        XLSX.utils.book_append_sheet(workbook, worksheet, reportName.substring(0, 31)); // Limite de 31 caracteres para nome da aba
+
+        // Salvar o arquivo Excel
+        XLSX.writeFile(workbook, `${fileName}.xlsx`);
       }
-      
-      await personService.exportData(filteredPeople);
-      toast.success(`Relatório gerado com ${filteredPeople.length} registros!`);
+
+      const totalQuantity = reportData.reduce((sum, item) => sum + item.quantidade, 0);
+      toast.success(`Relatório "${reportName}" exportado com sucesso! ${reportData.length} registros processados. Total: ${totalQuantity.toLocaleString()}, Média: ${Math.round(totalQuantity / reportData.length).toLocaleString()}`);
     } catch (error) {
-      toast.error('Erro ao gerar relatório');
+      console.error('Erro ao exportar relatório:', error);
+      toast.error('Erro ao exportar relatório. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -148,13 +438,13 @@ const ReportsPage: React.FC = () => {
       <div className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border-l-4 border-l-indigo-500">
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
           <FileText className="h-8 w-8 text-indigo-600" />
-          Relatórios e Auditoria
+          Relatorios e Auditoria
           <Badge variant="outline" className="ml-2 bg-indigo-100 text-indigo-700 border-indigo-300">
             Analytics
           </Badge>
         </h1>
         <p className="text-gray-600 mt-2">
-          Gere relatórios personalizados e visualize logs de auditoria do sistema
+          Gere relatorios personalizados e visualize logs de auditoria do sistema
         </p>
       </div>
 
@@ -189,7 +479,7 @@ const ReportsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{metrics.byNeighborhood.length}</div>
-            <p className="text-xs text-muted-foreground">Distribuição geográfica</p>
+            <p className="text-xs text-muted-foreground">Distribuicao geografica</p>
           </CardContent>
         </Card>
 
@@ -211,15 +501,15 @@ const ReportsPage: React.FC = () => {
           <CardHeader className="bg-emerald-50">
             <CardTitle className="flex items-center gap-2 text-gray-900">
               <MessageSquare className="h-5 w-5 text-emerald-500" />
-              Interações por Tipo
+              Interacoes por Tipo
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Distribuição dos tipos de interações
+              Distribuicao dos tipos de interacoes
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {metrics.interactionsByType.map((item, index) => {
+              {metrics.interactionsByType.map((item) => {
                 const getTypeIcon = (type: InteractionType) => {
                   switch (type) {
                     case 'atendimento': return <User className="h-4 w-4" />
@@ -250,10 +540,10 @@ const ReportsPage: React.FC = () => {
           <CardHeader className="bg-blue-50">
             <CardTitle className="flex items-center gap-2 text-gray-900">
               <Activity className="h-5 w-5 text-blue-500" />
-              Interações por Status
+              Interacoes por Status
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Status atual das interações
+              Status atual das interacoes
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -286,95 +576,206 @@ const ReportsPage: React.FC = () => {
         <Card className="border-l-4 border-l-indigo-500 shadow-sm">
           <CardHeader className="bg-indigo-50">
             <CardTitle className="flex items-center gap-2 text-gray-900">
-              <FileText className="h-5 w-5 text-indigo-500" />
-              Gerar Relatório Personalizado
+              <BarChart3 className="h-5 w-5 text-indigo-500" />
+              Gerar Relatorio Personalizado
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Configure os filtros e gere um relatório personalizado
+              Selecione o tipo de relatório para visualizar os dados automaticamente
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Data Inicial</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={reportFilters.startDate}
-                  onChange={(e) => setReportFilters(prev => ({ ...prev, startDate: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endDate">Data Final</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={reportFilters.endDate}
-                  onChange={(e) => setReportFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="city">Cidade</Label>
-                <Input
-                  id="city"
-                  placeholder="Digite a cidade"
-                  value={reportFilters.city}
-                  onChange={(e) => setReportFilters(prev => ({ ...prev, city: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="state">Estado</Label>
-                <Input
-                  id="state"
-                  placeholder="SP"
-                  maxLength={2}
-                  value={reportFilters.state}
-                  onChange={(e) => setReportFilters(prev => ({ ...prev, state: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ageMin">Idade Mínima</Label>
-                <Input
-                  id="ageMin"
-                  type="number"
-                  placeholder="18"
-                  value={reportFilters.ageMin || ''}
-                  onChange={(e) => setReportFilters(prev => ({ ...prev, ageMin: e.target.value ? parseInt(e.target.value) : undefined }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ageMax">Idade Máxima</Label>
-                <Input
-                  id="ageMax"
-                  type="number"
-                  placeholder="65"
-                  value={reportFilters.ageMax || ''}
-                  onChange={(e) => setReportFilters(prev => ({ ...prev, ageMax: e.target.value ? parseInt(e.target.value) : undefined }))}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="reportType">Tipo de Relatório</Label>
+              <Select value={selectedReportType} onValueChange={setSelectedReportType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo de relatório" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="interactions-by-type">Interações por Tipo</SelectItem>
+                <SelectItem value="interactions-by-status">Interações por Status</SelectItem>
+                <SelectItem value="people-by-relationship">Pessoas por Tipo de Vínculo</SelectItem>
+                <SelectItem value="distribution-by-neighborhood">Distribuição por Bairro</SelectItem>
+                <SelectItem value="distribution-by-age">Distribuição por Faixa Etária</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
-            <Button 
-              onClick={handleGenerateReport} 
-              disabled={isLoading || !canExport}
-              className="w-full"
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Gerando...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Gerar Relatório
-                </>
-              )}
-            </Button>
+            {selectedReportType && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 text-blue-700 mb-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="font-medium">Relatório Selecionado:</span>
+                </div>
+                <p className="text-sm text-blue-600">
+                  {selectedReportType === 'interactions-by-type' && 'Mostra a distribuição das interações por tipo (atendimento, ligação, etc.)'}
+                  {selectedReportType === 'interactions-by-status' && 'Mostra a distribuição das interações por status (concluído, pendente, etc.)'}
+                  {selectedReportType === 'people-by-relationship' && 'Mostra a distribuição das pessoas por tipo de vínculo (eleitor, parceiro, etc.)'}
+                  {selectedReportType === 'distribution-by-neighborhood' && 'Mostra a distribuição das pessoas por bairro'}
+                  {selectedReportType === 'distribution-by-age' && 'Mostra a distribuição das pessoas por faixas etárias'}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
       </div>
+
+      {/* Tabela de Relatório */}
+      {selectedReportType && reportData.length > 0 && (
+        <Card className="border-l-4 border-l-green-500 shadow-sm">
+          <CardHeader className="bg-green-50">
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <BarChart3 className="h-5 w-5 text-green-500" />
+              Resultado do Relatório
+              <Badge variant="outline" className="ml-2 bg-green-100 text-green-700 border-green-300">
+                {reportData.length} registros
+              </Badge>
+            </CardTitle>
+            <CardDescription className="text-gray-600">
+               {selectedReportType === 'interactions-by-type' && 'Distribuição das interações por tipo'}
+               {selectedReportType === 'interactions-by-status' && 'Distribuição das interações por status'}
+               {selectedReportType === 'people-by-relationship' && 'Distribuição das pessoas por tipo de vínculo'}
+               {selectedReportType === 'distribution-by-neighborhood' && 'Distribuição das pessoas por bairro'}
+               {selectedReportType === 'distribution-by-age' && 'Distribuição das pessoas por faixa etária'}
+             </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mr-3"></div>
+                <span className="text-gray-600">Carregando dados...</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">#</TableHead>
+                      <TableHead>
+                         {selectedReportType === 'interactions-by-type' && 'Tipo de Interação'}
+                         {selectedReportType === 'interactions-by-status' && 'Status'}
+                         {selectedReportType === 'people-by-relationship' && 'Tipo de Vínculo'}
+                         {selectedReportType === 'distribution-by-neighborhood' && 'Bairro'}
+                         {selectedReportType === 'distribution-by-age' && 'Faixa Etária'}
+                       </TableHead>
+                      <TableHead className="text-right">Quantidade</TableHead>
+                      <TableHead className="text-right">Percentual</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="font-medium">{row.id}</TableCell>
+                        <TableCell>
+                           {row.tipo || row.status || row.vinculo || row.bairro || row.faixaEtaria}
+                         </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {row.quantidade.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                            {row.percentual}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+            }
+            
+            {/* Componente de Paginação */}
+              {reportData.length > itemsPerPage && (
+                <div className="flex items-center justify-between mt-4 p-4 border-t">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>
+                      Mostrando {startIndex + 1} a {Math.min(endIndex, reportData.length)} de {reportData.length} registros
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    <span className="text-sm px-2">
+                      Página {currentPage} de {totalPages}
+                    </span>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    
+                    <div className="flex items-center gap-2 ml-4">
+                      <span className="text-sm">Itens por página:</span>
+                      <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                        <SelectTrigger className="w-20 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            
+            {canExport() && reportData.length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      disabled={isLoading}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Exportar Relatório
+                      <ChevronDown className="h-4 w-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="center" className="w-48">
+                    <DropdownMenuItem 
+                      onClick={() => handleExportReport('pdf')}
+                      disabled={isLoading}
+                      className="cursor-pointer"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Exportar como PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => handleExportReport('excel')}
+                      disabled={isLoading}
+                      className="cursor-pointer"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Exportar como Excel
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Distribuição por Tipo de Vínculo */}
@@ -390,7 +791,7 @@ const ReportsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {metrics.peopleByRelationshipType.map((item, index) => (
+              {metrics.peopleByRelationshipType.map((item, index: number) => (
                 <div key={item.type} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
@@ -408,7 +809,7 @@ const ReportsPage: React.FC = () => {
           <CardHeader className="bg-orange-50">
             <CardTitle className="flex items-center gap-2 text-gray-900">
               <MapPin className="h-5 w-5 text-orange-500" />
-              Distribuição por Bairro
+              Distribuicao por Bairro
             </CardTitle>
             <CardDescription className="text-gray-600">
               Top 5 bairros com mais registros
@@ -416,7 +817,7 @@ const ReportsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {metrics.byNeighborhood.map((item, index) => (
+              {metrics.byNeighborhood.map((item, index: number) => (
                 <div key={item.neighborhood} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
@@ -430,11 +831,11 @@ const ReportsPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Distribuição por Faixa Etária */}
+      {/* Distribuicao por Faixa Etaria */}
       <Card>
         <CardHeader>
           <CardTitle>Distribuição por Faixa Etária</CardTitle>
-          <CardDescription>Quantidade de pessoas por faixa etária</CardDescription>
+          <CardDescription>Quantidade de pessoas por faixa etaria</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -448,31 +849,7 @@ const ReportsPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Informações sobre LGPD */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Conformidade LGPD</CardTitle>
-          <CardDescription>
-            Informações sobre proteção de dados e auditoria
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-muted-foreground space-y-2">
-            <p>
-              • Todos os relatórios respeitam as diretrizes da LGPD, mascarando dados sensíveis quando necessário.
-            </p>
-            <p>
-              • A geração de relatórios é registrada nos logs de auditoria para rastreabilidade.
-            </p>
-            <p>
-              • Apenas usuários com permissões específicas podem gerar relatórios e visualizar logs.
-            </p>
-            <p>
-              • Os dados exportados são criptografados e incluem apenas informações autorizadas.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+
     </div>
   );
 };

@@ -50,7 +50,7 @@ export const MaintenanceProvider: React.FC<MaintenanceProviderProps> = ({ childr
     }
 
     // Escuta mudanças na mesma aba
-    const handleMaintenanceChange = (e: CustomEvent) => {
+    const handleMaintenanceChange = () => {
       // Não precisa fazer nada aqui, o estado já foi atualizado
     }
 

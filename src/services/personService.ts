@@ -6,7 +6,6 @@ import { encryptData, decryptData, maskSensitiveData } from '../utils/lgpd'
  * Serviço para gerenciamento de pessoas
  */
 class PersonService {
-  private readonly _API_BASE_URL = '/api/persons'
   private readonly STORAGE_KEY = 'persons_data'
 
   /**
@@ -20,13 +19,7 @@ class PersonService {
       // Validar dados obrigatórios
       this.validatePersonData(personData)
 
-      // Verificar se CPF já existe
-      if (personData.cpf) {
-        const existingPerson = await this.findByCPF(personData.cpf)
-        if (existingPerson) {
-          throw new Error('CPF já cadastrado no sistema')
-        }
-      }
+
 
       // Criar pessoa
       const person: Person = {
@@ -74,13 +67,7 @@ class PersonService {
         throw new Error('Pessoa não encontrada')
       }
 
-      // Verificar se CPF já existe em outra pessoa
-      if (personData.cpf && personData.cpf !== existingPerson.cpf) {
-        const personWithCPF = await this.findByCPF(personData.cpf)
-        if (personWithCPF && personWithCPF.id !== id) {
-          throw new Error('CPF já cadastrado em outra pessoa')
-        }
-      }
+
 
       // Atualizar pessoa
       const updatedPerson: Person = {
@@ -124,20 +111,7 @@ class PersonService {
     }
   }
 
-  /**
-   * Busca pessoa por CPF
-   * @param cpf CPF da pessoa
-   * @returns Pessoa encontrada ou null
-   */
-  async findByCPF(cpf: string): Promise<Person | null> {
-    try {
-      const persons = await this.getAllPersons()
-      return persons.find(person => person.cpf === cpf) || null
-    } catch (error) {
-      console.error('Erro ao buscar pessoa por CPF:', error)
-      return null
-    }
-  }
+
 
   /**
    * Pesquisa pessoas com filtros
@@ -158,11 +132,7 @@ class PersonService {
         )
       }
 
-      if (filters.cpf) {
-        filteredPersons = filteredPersons.filter(person =>
-          person.cpf?.includes(filters.cpf!)
-        )
-      }
+
 
       if (filters.email) {
         const emailFilter = filters.email.toLowerCase()
@@ -250,7 +220,7 @@ class PersonService {
     try {
       const person = await this.getPersonById(personId)
       if (!person) {
-        throw new Error('Pessoa não encontrada')
+        throw new Error('Pessoa nao encontrada')
       }
 
       const newInteraction: Interaction = {
@@ -291,7 +261,7 @@ class PersonService {
     try {
       const person = await this.getPersonById(id)
       if (!person) {
-        throw new Error('Pessoa não encontrada')
+        throw new Error('Pessoa nao encontrada')
       }
 
       // Soft delete - marcar como deletada
@@ -443,8 +413,6 @@ class PersonService {
 
     const headers = [
       'Nome',
-      'CPF',
-      'RG',
       'Email',
       'Telefone',
       'Data Nascimento',
@@ -458,8 +426,6 @@ class PersonService {
       headers.join(','),
       ...persons.map(person => [
         `"${person.name}"`,
-        person.cpf || '',
-        person.rg || '',
         person.email || '',
         person.phone || '',
         person.birthDate ? person.birthDate.toLocaleDateString('pt-BR') : '',

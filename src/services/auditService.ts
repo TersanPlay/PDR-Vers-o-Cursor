@@ -4,7 +4,6 @@ import { AuditLog, AuditAction } from '../types'
  * Serviço de auditoria para conformidade com LGPD
  */
 class AuditService {
-  private readonly _API_BASE_URL = '/api/audit'
 
   /**
    * Registra uma ação de auditoria
@@ -13,7 +12,7 @@ class AuditService {
   async log(logData: {
     userId: string
     action: AuditAction
-    resourceType: 'person' | 'interaction' | 'user' | 'report'
+    resourceType: 'person' | 'interaction' | 'user' | 'report' | 'cabinet' | 'credentials'
     resourceId?: string
     details?: string
   }): Promise<void> {

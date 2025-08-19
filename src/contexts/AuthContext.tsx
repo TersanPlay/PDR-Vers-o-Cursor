@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react'
 import { User, AuthContextType, UserRole } from '../types'
 import { authService } from '../services/authService'
 import { auditService } from '../services/auditService'
@@ -79,34 +79,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const value: AuthContextType = {
-    user,
-    login,
-    logout,
-    isLoading,
-    isAuthenticated: !!user
-  }
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
-
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider')
-  }
-  return context
-}
-
-// Hook para verificar permissões
-export function usePermissions() {
-  const { user } = useAuth()
-
-  return useMemo(() => {
+  // Funções de permissão usando useMemo para otimização
+  const permissions = useMemo(() => {
     const hasRole = (role: UserRole): boolean => {
       return user?.role === role
     }
@@ -175,6 +149,33 @@ export function usePermissions() {
       return false
     }
 
+    // Permissões específicas para gerenciamento de credenciais
+    const canManageCredentials = (): boolean => {
+      return hasAnyRole(['admin', 'chefe_gabinete'])
+    }
+
+    const canViewCredentials = (cabinetId?: string): boolean => {
+      if (hasRole('admin')) return true
+      if (hasRole('chefe_gabinete')) {
+        // Chefe de gabinete só pode ver credenciais do próprio gabinete
+        return user?.cabinetId === cabinetId
+      }
+      return false
+    }
+
+    const canEditCredentials = (cabinetId?: string): boolean => {
+      if (hasRole('admin')) return true
+      if (hasRole('chefe_gabinete')) {
+        // Chefe de gabinete só pode editar credenciais do próprio gabinete
+        return user?.cabinetId === cabinetId
+      }
+      return false
+    }
+
+    const canViewCredentialsAudit = (): boolean => {
+      return hasAnyRole(['admin', 'chefe_gabinete'])
+    }
+
     return {
       hasRole,
       hasAnyRole,
@@ -189,7 +190,59 @@ export function usePermissions() {
       canManageBackup,
       canCreateUserRole,
       canEditUserRole,
-      canDeleteUserRole
+      canDeleteUserRole,
+      canManageCredentials,
+      canViewCredentials,
+      canEditCredentials,
+      canViewCredentialsAudit
     }
   }, [user])
+
+  const value: AuthContextType = {
+    user,
+    login,
+    logout,
+    isLoading,
+    isAuthenticated: !!user,
+    ...permissions
+  }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider')
+  }
+  return context
+}
+
+// Hook para verificar permissões (mantido para compatibilidade com componentes existentes)
+export function usePermissions() {
+  const auth = useAuth()
+  return {
+    hasRole: auth.hasRole!,
+    hasAnyRole: auth.hasAnyRole!,
+    canCreate: auth.canCreate!,
+    canEdit: auth.canEdit!,
+    canDelete: auth.canDelete!,
+    canExport: auth.canExport!,
+    canViewReports: auth.canViewReports!,
+    canViewAuditLogs: auth.canViewAuditLogs!,
+    canManageUsers: auth.canManageUsers!,
+    canAccessMaintenance: auth.canAccessMaintenance!,
+    canManageBackup: auth.canManageBackup!,
+    canCreateUserRole: auth.canCreateUserRole!,
+    canEditUserRole: auth.canEditUserRole!,
+    canDeleteUserRole: auth.canDeleteUserRole!,
+    canManageCredentials: auth.canManageCredentials!,
+    canViewCredentials: auth.canViewCredentials!,
+    canEditCredentials: auth.canEditCredentials!,
+    canViewCredentialsAudit: auth.canViewCredentialsAudit!
+  }
 }

@@ -1,23 +1,25 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import { personService } from '@/services/personService';
-import { usePermissions } from '@/components/ProtectedRoute';
-import { maskCPF, maskPhone } from '@/utils/lgpd';
-import { Search, Plus, Edit, Eye, Trash2, Download, User } from 'lucide-react';
-import type { Person, SearchFilters } from '@/types';
+import React, { useState, useCallback, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Search, Plus, User, Download, Trash2, Eye, Edit } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
+import { PageHeader, FormCard, LoadingSpinner } from '@/components/ui'
+import { usePermissions } from '@/contexts/AuthContext'
+import { personService } from '@/services/personService'
+import { maskPhone } from '@/utils/lgpd'
+import { Person, SearchFilters } from '@/types'
+import { useToast } from '@/components/ui/use-toast'
 
 const PersonSearchPage: React.FC = () => {
-  const navigate = useNavigate();
-  const { canCreate, canEdit, canDelete, canViewSensitive, canExport } = usePermissions();
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const { canCreate, canEdit, canDelete, canExport } = usePermissions()
+  const canViewSensitive = true // Temporário - ajustar conforme necessário
   
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     name: '',
-    cpf: '',
     phone: '',
     city: '',
     state: '',
@@ -26,7 +28,7 @@ const PersonSearchPage: React.FC = () => {
   const [results, setResults] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<number | null>(null);
 
   const handleSearch = useCallback(async () => {
     // Verificar se pelo menos um campo foi preenchido
@@ -38,7 +40,8 @@ const PersonSearchPage: React.FC = () => {
 
     try {
       setIsLoading(true);
-      const searchResults = await personService.search(searchFilters);
+      const searchResult = await personService.searchPersons(searchFilters, 'current-user');
+      const searchResults = searchResult.people;
       setResults(searchResults);
       setHasSearched(true);
       
@@ -86,7 +89,6 @@ const PersonSearchPage: React.FC = () => {
   const handleClearFilters = () => {
     setSearchFilters({
       name: '',
-      cpf: '',
       phone: '',
       city: '',
       state: '',
@@ -103,7 +105,7 @@ const PersonSearchPage: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await personService.exportData(results);
+      await personService.exportPersons(searchFilters, 'csv', 'current-user');
       toast.success('Dados exportados com sucesso!');
     } catch (error) {
       toast.error('Erro ao exportar dados');
@@ -120,7 +122,7 @@ const PersonSearchPage: React.FC = () => {
 
     if (window.confirm(`Tem certeza que deseja excluir ${name}?`)) {
       try {
-        await personService.remove(id);
+        await personService.deletePerson(id, 'current-user');
         toast.success('Pessoa excluída com sucesso!');
         // Atualizar a lista removendo a pessoa excluída
         setResults(prev => prev.filter(person => person.id !== id));
@@ -130,42 +132,30 @@ const PersonSearchPage: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+  const formatDate = (date: string | Date) => {
+    return new Date(date).toLocaleDateString('pt-BR');
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 mb-2">
-            <Search className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Buscar Pessoas</h1>
-          </div>
-          <p className="text-blue-700/70">
-            Use os filtros abaixo para encontrar pessoas no sistema
-          </p>
-        </div>
-        {canCreate && (
-          <Button onClick={() => navigate('/cadastro')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Pessoa
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Buscar Pessoas"
+        description="Use os filtros abaixo para encontrar pessoas no sistema"
+        icon={Search}
+        action={canCreate() ? {
+          label: 'Nova Pessoa',
+          onClick: () => navigate('/pessoa/novo'),
+          icon: Plus
+        } : undefined}
+      />
 
       {/* Filtros de Busca */}
-      <Card className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
-          <div className="flex items-center gap-3">
-            <Search className="h-6 w-6 text-blue-600" />
-            <CardTitle className="text-blue-800">Filtros de Busca</CardTitle>
-          </div>
-          <CardDescription className="text-blue-700/70">
-            Digite nos campos abaixo - a busca é feita automaticamente enquanto você digita
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <FormCard
+        title="Filtros de Busca"
+        description="Digite nos campos abaixo - a busca é feita automaticamente enquanto você digita"
+        icon={Search}
+        variant="blue"
+      >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nome</Label>
@@ -177,16 +167,7 @@ const PersonSearchPage: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="cpf">CPF</Label>
-              <Input
-                id="cpf"
-                placeholder="000.000.000-00"
-                value={searchFilters.cpf}
-                onChange={(e) => setSearchFilters(prev => ({ ...prev, cpf: e.target.value }))}
-                maxLength={14}
-              />
-            </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone</Label>
@@ -224,7 +205,7 @@ const PersonSearchPage: React.FC = () => {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               {isLoading && (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <LoadingSpinner size="sm" variant="blue" />
                   <span>Buscando automaticamente...</span>
                 </>
               )}
@@ -236,32 +217,25 @@ const PersonSearchPage: React.FC = () => {
               Limpar Filtros
             </Button>
           </div>
-        </CardContent>
-      </Card>
+      </FormCard>
 
       {/* Resultados */}
       {(hasSearched || Object.values(searchFilters).some(value => value.trim() !== '')) && (
-        <Card className="border-l-4 border-l-green-500 shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <User className="h-6 w-6 text-green-600" />
-                <div>
-                  <CardTitle className="text-green-800">Resultados da Busca</CardTitle>
-                  <CardDescription className="text-green-700/70">
-                    {results.length} pessoa(s) encontrada(s)
-                  </CardDescription>
-                </div>
-              </div>
-              {results.length > 0 && canExport && (
-                <Button variant="outline" onClick={handleExport} disabled={isLoading}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
+        <FormCard
+          title="Resultados da Busca"
+          description={`${results.length} pessoa(s) encontrada(s)`}
+          icon={User}
+          variant="green"
+        >
+          <div className="flex justify-between items-center mb-4">
+            <div></div>
+            {results.length > 0 && canExport() && (
+              <Button variant="outline" onClick={handleExport} disabled={isLoading}>
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            )}
+          </div>
             {results.length === 0 ? (
               <div className="text-center py-12">
                 <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -281,7 +255,7 @@ const PersonSearchPage: React.FC = () => {
                       <p className="font-medium text-blue-900 mb-1">Dicas para melhorar sua busca:</p>
                       <ul className="text-blue-800 space-y-1 list-none">
                         <li>• Verifique se os dados estão corretos</li>
-                        <li>• Tente buscar apenas por nome ou CPF</li>
+                        <li>• Tente buscar apenas por nome</li>
                         <li>• Use termos mais gerais</li>
                       </ul>
                     </div>
@@ -313,13 +287,10 @@ const PersonSearchPage: React.FC = () => {
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <span className="font-medium">CPF:</span>{' '}
-                            {canViewSensitive ? person.cpf : maskCPF(person.cpf)}
-                          </div>
+
                           <div>
                             <span className="font-medium">Telefone:</span>{' '}
-                            {canViewSensitive ? person.phone : maskPhone(person.phone)}
+                            {canViewSensitive ? person.phone : maskPhone(person.phone || '')}
                           </div>
                           <div>
                             <span className="font-medium">Data Nasc.:</span>{' '}
@@ -327,11 +298,11 @@ const PersonSearchPage: React.FC = () => {
                           </div>
                           <div>
                             <span className="font-medium">Cidade:</span>{' '}
-                            {person.address.city}/{person.address.state}
+                            {person.address?.city}/{person.address?.state}
                           </div>
                           <div>
                             <span className="font-medium">Bairro:</span>{' '}
-                            {person.address.neighborhood}
+                            {person.address?.neighborhood}
                           </div>
                           <div>
                             <span className="font-medium">Cadastrado:</span>{' '}
@@ -349,7 +320,7 @@ const PersonSearchPage: React.FC = () => {
                           <Eye className="h-4 w-4" />
                         </Button>
                         
-                        {canEdit && (
+                        {canEdit() && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -359,7 +330,7 @@ const PersonSearchPage: React.FC = () => {
                           </Button>
                         )}
                         
-                        {canDelete && (
+                        {canDelete() && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -375,19 +346,16 @@ const PersonSearchPage: React.FC = () => {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+        </FormCard>
       )}
 
       {/* Informações sobre LGPD */}
-      <Card className="border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
-          <div className="flex items-center gap-3">
-            <Eye className="h-6 w-6 text-purple-600" />
-            <CardTitle className="text-purple-800">Informações sobre Privacidade</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
+      <FormCard
+        title="Informações sobre Privacidade"
+        description="Proteção de dados conforme LGPD"
+        icon={Eye}
+        variant="purple"
+      >
           <div className="text-sm text-muted-foreground space-y-2">
             <p>
               • Os dados pessoais são protegidos conforme a Lei Geral de Proteção de Dados (LGPD).
@@ -402,8 +370,7 @@ const PersonSearchPage: React.FC = () => {
               • A exportação de dados requer permissões especiais e é auditada.
             </p>
           </div>
-        </CardContent>
-      </Card>
+      </FormCard>
     </div>
   );
 };

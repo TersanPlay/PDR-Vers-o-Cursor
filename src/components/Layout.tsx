@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, usePermissions } from '../contexts/AuthContext'
 import {
-  Users,
   Search,
   Plus,
   BarChart3,
@@ -10,10 +9,11 @@ import {
   LogOut,
   Menu,
   X,
-  Shield,
   FileText,
   Home,
-  MessageSquare
+  MessageSquare,
+  Building2,
+  CheckSquare
 } from 'lucide-react'
 import { Button } from './ui/button'
 import { Avatar, AvatarFallback } from './ui/avatar'
@@ -45,6 +45,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     navigate('/login')
   }
 
+  console.log('🔧 Layout - user:', user)
+  console.log('🔧 Layout - permissions:', permissions)
+  console.log('🔧 Layout - hasRole admin:', permissions.hasRole('admin'))
+  console.log('🔧 Layout - hasRole chefe_gabinete:', permissions.hasRole('chefe_gabinete'))
+
   const menuItems = [
     {
       name: 'Dashboard',
@@ -71,10 +76,22 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       show: permissions.canCreate() || permissions.canEdit()
     },
     {
+      name: 'Tarefas',
+      href: '/tarefas',
+      icon: CheckSquare,
+      show: permissions.canCreate() || permissions.canEdit()
+    },
+    {
       name: 'Relatórios',
       href: '/relatorios',
       icon: BarChart3,
       show: permissions.canExport()
+    },
+    {
+      name: 'Gerenciar Gabinetes',
+      href: '/gabinetes',
+      icon: Building2,
+      show: permissions.hasAnyRole(['admin', 'chefe_gabinete'])
     },
     {
       name: 'Configurações',
@@ -83,6 +100,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       show: permissions.canManageUsers()
     }
   ].filter(item => item.show)
+
+  console.log('🔧 Layout - menuItems antes do filtro:', [
+    { name: 'Dashboard', show: true },
+    { name: 'Cadastrar Pessoa', show: permissions.canCreate() },
+    { name: 'Pesquisar Pessoas', show: true },
+    { name: 'Interações', show: permissions.canCreate() || permissions.canEdit() },
+    { name: 'Relatórios', show: permissions.canExport() },
+    { name: 'Gerenciar Gabinetes', show: permissions.hasAnyRole(['admin', 'chefe_gabinete']) },
+    { name: 'Configurações', show: permissions.canManageUsers() }
+  ])
+  console.log('🔧 Layout - menuItems após filtro:', menuItems.map(item => item.name))
 
   const isActive = (href: string) => {
     return location.pathname === href || location.pathname.startsWith(href + '/')

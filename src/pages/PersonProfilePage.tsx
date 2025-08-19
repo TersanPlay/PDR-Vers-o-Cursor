@@ -4,26 +4,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import { useToast } from '@/components/ui/use-toast';
 import { personService } from '@/services/personService';
 import { usePermissions } from '@/components/ProtectedRoute';
-import { maskCPF, maskRG, maskPhone, maskEmail } from '@/utils/lgpd';
-import { Edit, ArrowLeft, Plus, Calendar, User, Phone, Mail, MapPin, FileText } from 'lucide-react';
+import { maskPhone, maskEmail } from '@/utils/lgpd';
+import { Edit, ArrowLeft, Plus, Calendar, User, Phone, MapPin, FileText } from 'lucide-react';
 import type { Person, Interaction, InteractionFormData } from '@/types';
 
 const PersonProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { canEdit, canViewSensitive } = usePermissions();
+  const { toast } = useToast();
+  const { canEdit, canViewSensitiveData } = usePermissions();
   
   const [person, setPerson] = useState<Person | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddInteraction, setShowAddInteraction] = useState(false);
   const [newInteraction, setNewInteraction] = useState<Partial<InteractionFormData>>({
-    type: 'contact',
+    type: 'atendimento',
+    title: '',
     description: '',
-    notes: '',
+    status: 'pendente'
   });
 
   useEffect(() => {
@@ -37,7 +39,7 @@ const PersonProfilePage: React.FC = () => {
     
     try {
       setIsLoading(true);
-      const personData = await personService.getById(id);
+      const personData = await personService.getPersonById(id);
       if (personData) {
         setPerson(personData);
         setInteractions(personData.interactions || []);
@@ -60,13 +62,16 @@ const PersonProfilePage: React.FC = () => {
     }
 
     try {
-      const interactionData: InteractionFormData = {
-        type: newInteraction.type as any,
-        description: newInteraction.description,
-        notes: newInteraction.notes || '',
-      };
+      const interactionData = {
+          type: newInteraction.type || 'atendimento',
+          description: newInteraction.description || '',
+          title: newInteraction.title || '',
+          status: newInteraction.status || 'pendente',
+          personId: id,
+          responsibleUserId: 'user123', // TODO: usar userId real
+        };
 
-      await personService.addInteraction(id, interactionData);
+      await personService.addInteraction(id, interactionData, 'user123'); // TODO: usar userId real
       toast.success('Interação adicionada com sucesso!');
       
       // Recarregar dados para mostrar a nova interação
@@ -74,9 +79,10 @@ const PersonProfilePage: React.FC = () => {
       
       // Limpar formulário
       setNewInteraction({
-        type: 'contact',
+        type: 'atendimento',
+        title: '',
         description: '',
-        notes: '',
+        status: 'pendente'
       });
       setShowAddInteraction(false);
     } catch (error) {
@@ -167,7 +173,7 @@ const PersonProfilePage: React.FC = () => {
               </div>
             </div>
           </div>
-          {canEdit && (
+          {canEdit() && (
             <Button onClick={() => navigate(`/person/${person.id}/edit`)}>
               <Edit className="h-4 w-4 mr-2" />
               Editar
@@ -188,21 +194,10 @@ const PersonProfilePage: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">CPF</Label>
-                  <p className="text-sm">
-                    {canViewSensitive ? person.cpf : maskCPF(person.cpf)}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">RG</Label>
-                  <p className="text-sm">
-                    {canViewSensitive ? person.rg : maskRG(person.rg)}
-                  </p>
-                </div>
+
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Data de Nascimento</Label>
-                  <p className="text-sm">{formatDate(person.birthDate)}</p>
+                  <p className="text-sm">{formatDate(person.birthDate.toISOString())}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Idade</Label>
@@ -226,14 +221,14 @@ const PersonProfilePage: React.FC = () => {
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Telefone</Label>
                   <p className="text-sm">
-                    {canViewSensitive ? person.phone : maskPhone(person.phone)}
+                    {canViewSensitiveData() ? person.phone : maskPhone(person.phone || '')}
                   </p>
                 </div>
                 {person.email && (
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">E-mail</Label>
                     <p className="text-sm">
-                      {canViewSensitive ? person.email : maskEmail(person.email)}
+                      {canViewSensitiveData() ? person.email : maskEmail(person.email || '')}
                     </p>
                   </div>
                 )}
@@ -251,42 +246,22 @@ const PersonProfilePage: React.FC = () => {
             <CardContent>
               <div className="space-y-2">
                 <p className="text-sm">
-                  {person.address.street}, {person.address.number}
-                  {person.address.complement && `, ${person.address.complement}`}
+                  {person.address?.street}, {person.address?.number}
+                  {person.address?.complement && `, ${person.address.complement}`}
                 </p>
                 <p className="text-sm">
-                  {person.address.neighborhood} - {person.address.city}/{person.address.state}
+                  {person.address?.neighborhood} - {person.address?.city}/{person.address?.state}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  CEP: {person.address.cep}
+                  CEP: {person.address?.cep}
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          {(person.motherName || person.fatherName) && (
-            <Card className="border-l-4 border-l-pink-500 shadow-sm">
-              <CardHeader className="bg-pink-50">
-                <CardTitle className="text-gray-900">Filiação</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {person.motherName && (
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Nome da Mãe</Label>
-                    <p className="text-sm">{person.motherName}</p>
-                  </div>
-                )}
-                {person.fatherName && (
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Nome do Pai</Label>
-                    <p className="text-sm">{person.fatherName}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
-          {person.observations && (
+
+          {person.notes && (
             <Card className="border-l-4 border-l-indigo-500 shadow-sm">
               <CardHeader className="bg-indigo-50">
                 <CardTitle className="flex items-center gap-2 text-gray-900">
@@ -295,7 +270,7 @@ const PersonProfilePage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{person.observations}</p>
+                <p className="text-sm whitespace-pre-wrap">{person.notes}</p>
               </CardContent>
             </Card>
           )}
@@ -313,11 +288,11 @@ const PersonProfilePage: React.FC = () => {
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Cadastrado em</Label>
-                <p className="text-sm">{formatDateTime(person.createdAt)}</p>
+                <p className="text-sm">{formatDateTime(person.createdAt.toISOString())}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Última atualização</Label>
-                <p className="text-sm">{formatDateTime(person.updatedAt)}</p>
+                <p className="text-sm">{formatDateTime(person.updatedAt.toISOString())}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Total de interações</Label>
@@ -355,14 +330,24 @@ const PersonProfilePage: React.FC = () => {
                       value={newInteraction.type}
                       onChange={(e) => setNewInteraction(prev => ({ ...prev, type: e.target.value as any }))}
                     >
-                      <option value="contact">Contato</option>
-                      <option value="visit">Visita</option>
-                      <option value="phone_call">Ligação</option>
+                      <option value="atendimento">Atendimento</option>
+                      <option value="ligacao">Ligação</option>
                       <option value="email">E-mail</option>
-                      <option value="meeting">Reunião</option>
-                      <option value="document">Documento</option>
-                      <option value="other">Outro</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="reuniao">Reunião</option>
+                      <option value="visita">Visita</option>
+                      <option value="evento">Evento</option>
+                      <option value="outro">Outro</option>
                     </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="interactionTitle">Título</Label>
+                    <Input
+                      id="interactionTitle"
+                      placeholder="Título da interação..."
+                      value={newInteraction.title}
+                      onChange={(e) => setNewInteraction(prev => ({ ...prev, title: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="interactionDescription">Descrição</Label>
@@ -374,14 +359,18 @@ const PersonProfilePage: React.FC = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="interactionNotes">Observações</Label>
-                    <textarea
-                      id="interactionNotes"
-                      className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      placeholder="Observações adicionais..."
-                      value={newInteraction.notes}
-                      onChange={(e) => setNewInteraction(prev => ({ ...prev, notes: e.target.value }))}
-                    />
+                    <Label htmlFor="interactionStatus">Status</Label>
+                    <select
+                      id="interactionStatus"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      value={newInteraction.status}
+                      onChange={(e) => setNewInteraction(prev => ({ ...prev, status: e.target.value as any }))}
+                    >
+                      <option value="pendente">Pendente</option>
+                      <option value="em_andamento">Em Andamento</option>
+                      <option value="concluido">Concluído</option>
+                      <option value="cancelado">Cancelado</option>
+                    </select>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleAddInteraction}>
@@ -406,7 +395,7 @@ const PersonProfilePage: React.FC = () => {
               ) : (
                 <div className="space-y-3">
                   {interactions
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                     .map((interaction) => (
                       <div key={interaction.id} className="border rounded-lg p-3 space-y-2">
                         <div className="flex justify-between items-start">
@@ -414,13 +403,11 @@ const PersonProfilePage: React.FC = () => {
                             {getInteractionTypeLabel(interaction.type)}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {formatDateTime(interaction.date)}
+                            {formatDateTime(interaction.createdAt.toISOString())}
                           </span>
                         </div>
                         <p className="text-sm">{interaction.description}</p>
-                        {interaction.notes && (
-                          <p className="text-xs text-muted-foreground">{interaction.notes}</p>
-                        )}
+                        {/* Removido interaction.notes pois não existe no tipo Interaction */}
                       </div>
                     ))}
                 </div>

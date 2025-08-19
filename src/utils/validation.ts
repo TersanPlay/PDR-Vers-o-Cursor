@@ -235,15 +235,15 @@ export const validatePasswordStrength = (password: string) => {
   }
   
   if (!/[A-Z]/.test(password)) {
-    errors.push('A senha deve conter pelo menos uma letra maiúscula')
+    errors.push('A senha deve conter pelo menos uma letra maiuscula')
   }
   
   if (!/[a-z]/.test(password)) {
-    errors.push('A senha deve conter pelo menos uma letra minúscula')
+    errors.push('A senha deve conter pelo menos uma letra minuscula')
   }
   
   if (!/\d/.test(password)) {
-    errors.push('A senha deve conter pelo menos um número')
+    errors.push('A senha deve conter pelo menos um numero')
   }
   
   if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
@@ -256,7 +256,7 @@ export const validatePasswordStrength = (password: string) => {
   
   for (const sequence of commonSequences) {
     if (lowerPassword.includes(sequence)) {
-      errors.push('A senha não deve conter sequências comuns')
+      errors.push('A senha nao deve conter sequencias comuns')
       break
     }
   }

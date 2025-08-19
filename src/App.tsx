@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { MaintenanceProvider, useMaintenance } from './contexts/MaintenanceContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -12,11 +12,14 @@ import PersonProfilePage from './pages/PersonProfilePage'
 import ReportsPage from './pages/ReportsPage'
 import SettingsPage from './pages/SettingsPage'
 import InteractionsPage from './pages/InteractionsPage'
+import CabinetManagementPage from './pages/CabinetManagementPage'
+import TaskManagementPage from './pages/TaskManagementPage'
 import { Layout } from './components/Layout'
 import { Toaster } from './components/ui/toaster'
 import MaintenanceBanner from './components/MaintenanceBanner'
 import MaintenanceBlock from './components/MaintenanceBlock'
 import MaintenanceNotification from './components/MaintenanceNotification'
+import './App.css'
 
 // Componente interno que usa o contexto de manutenção
 function AppContent() {
@@ -53,7 +56,7 @@ function AppContent() {
             } />
             
             <Route path="/pessoa/novo" element={
-              <ProtectedRoute requiredRoles={['admin', 'assessor']}>
+              <ProtectedRoute requiredRoles={['admin', 'chefe_gabinete', 'assessor']}>
                 <Layout>
                   <PersonFormPage />
                 </Layout>
@@ -77,7 +80,7 @@ function AppContent() {
             } />
             
             <Route path="/interacoes" element={
-              <ProtectedRoute requiredRoles={['admin', 'assessor']}>
+              <ProtectedRoute requiredRoles={['admin', 'chefe_gabinete', 'assessor']}>
                 <Layout>
                   <InteractionsPage />
                 </Layout>
@@ -85,9 +88,25 @@ function AppContent() {
             } />
             
             <Route path="/relatorios" element={
-              <ProtectedRoute requiredRoles={['admin', 'assessor']}>
+              <ProtectedRoute requiredRoles={['admin', 'chefe_gabinete', 'assessor']}>
                 <Layout>
                   <ReportsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/gabinetes" element={
+              <ProtectedRoute requiredRoles={['admin', 'chefe_gabinete']}>
+                <Layout>
+                  <CabinetManagementPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/tarefas" element={
+              <ProtectedRoute requiredRoles={['admin', 'chefe_gabinete', 'assessor']}>
+                <Layout>
+                  <TaskManagementPage />
                 </Layout>
               </ProtectedRoute>
             } />

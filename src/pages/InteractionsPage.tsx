@@ -1,82 +1,24 @@
 import React, { useState, useEffect } from 'react'
 import { usePermissions } from '../contexts/AuthContext'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select'
-import { Badge } from '../components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
-import {
-  Plus,
-  Search,
-  Filter,
-  Calendar,
-  User,
-  Phone,
-  Mail,
-  MessageSquare,
-  Users,
-  MapPin,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Eye,
-  Edit,
-  Trash2
-} from 'lucide-react'
+// Removed unused Card import
+import { Plus, MessageSquare } from 'lucide-react'
 import { Interaction, InteractionType, InteractionStatus, Person } from '../types'
 import { toast } from '../components/ui/use-toast'
-import { formatDate, formatDateTime } from '../lib/utils'
+import { useAutoStatusUpdate } from '../hooks/useAutoStatusUpdate'
+import {
+  InteractionMetrics,
+  InteractionFilters,
+  InteractionTable,
+  InteractionFormDialog,
+  InteractionDetailsDialog,
+  InteractionFormData
+} from '../components/interactions'
 
-interface InteractionFormData {
-  personId: string
-  type: InteractionType
-  title: string
-  description: string
-  status: InteractionStatus
-  scheduledDate?: string
-  priority: 'baixa' | 'media' | 'alta'
-  followUpDate?: string
-  // Campos para novo visitante
-  isNewVisitor?: boolean
-  visitorName?: string
-  visitorPhone?: string
-  visitorEmail?: string
-}
+
 
 const InteractionsPage: React.FC = () => {
-  const { canCreate, canEdit, canDelete, canViewReports } = usePermissions()
+  const { canCreate, canEdit, canDelete } = usePermissions()
   const [interactions, setInteractions] = useState<Interaction[]>([])
   const [people, setPeople] = useState<Person[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -93,11 +35,26 @@ const InteractionsPage: React.FC = () => {
     title: '',
     description: '',
     status: 'pendente',
-    priority: 'media',
-    isNewVisitor: false,
-    visitorName: '',
-    visitorPhone: '',
-    visitorEmail: ''
+    priority: 'normal',
+    eventLocation: '',
+    eventStartTime: '',
+    eventEndTime: '',
+    eventScheduledBy: ''
+  })
+
+  // Hook para atualização automática de status
+  const handleInteractionUpdate = (updatedInteraction: Interaction) => {
+    setInteractions(prev => 
+      prev.map(interaction => 
+        interaction.id === updatedInteraction.id ? updatedInteraction : interaction
+      )
+    )
+    toast.success(`Status da interação "${updatedInteraction.title}" atualizado automaticamente para "${updatedInteraction.status}"`)
+  }
+
+  useAutoStatusUpdate({
+    interactions,
+    onUpdateInteraction: handleInteractionUpdate
   })
 
   // Dados mockados para demonstração
@@ -156,7 +113,6 @@ const InteractionsPage: React.FC = () => {
     {
       id: '1',
       name: 'Pedro Estevão',
-      cpf: '123.456.789-01',
       birthDate: new Date('1980-05-15'),
       email: 'pedro@email.com',
       phone: '(11) 99999-9999',
@@ -169,7 +125,6 @@ const InteractionsPage: React.FC = () => {
     {
       id: '2',
       name: 'Maria Assunção',
-      cpf: '987.654.321-09',
       birthDate: new Date('1975-08-22'),
       email: 'maria@email.com',
       phone: '(11) 88888-8888',
@@ -182,11 +137,10 @@ const InteractionsPage: React.FC = () => {
     {
       id: '3',
       name: 'João Assessor',
-      cpf: '456.789.123-45',
       birthDate: new Date('1990-12-10'),
       email: 'joao@email.com',
       phone: '(11) 77777-7777',
-      relationshipType: 'funcionario',
+      relationshipType: 'colaborador_assessor',
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: 'user1',
@@ -207,11 +161,7 @@ const InteractionsPage: React.FC = () => {
       setInteractions(mockInteractions)
     } catch (error) {
       console.error('Erro ao carregar interações:', error)
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar as interações',
-        variant: 'destructive'
-      })
+      toast.error('Não foi possível carregar as interações')
     } finally {
       setIsLoading(false)
     }
@@ -227,75 +177,35 @@ const InteractionsPage: React.FC = () => {
 
   const handleCreateInteraction = async () => {
     try {
-      let personId = formData.personId
-      
-      // Se for um novo visitante, criar a pessoa primeiro
-      if (formData.isNewVisitor && formData.visitorName) {
-        if (!formData.visitorName.trim()) {
-          toast({
-            title: 'Erro',
-            description: 'Nome do visitante é obrigatório',
-            variant: 'destructive'
-          })
-          return
-        }
-        
-        const newPerson: Person = {
-          id: `visitor_${Date.now()}`,
-          name: formData.visitorName,
-          cpf: '', // CPF não obrigatório para visitantes
-          rg: '', // RG não obrigatório para visitantes
-          birthDate: new Date(), // Data padrão
-          phone: formData.visitorPhone || '',
-          email: formData.visitorEmail || '',
-          relationshipType: 'outros', // Visitantes são classificados como 'outros'
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          createdBy: 'current-user',
-          updatedBy: 'current-user'
-        }
-        
-        // Adicionar a nova pessoa à lista
-        setPeople(prev => [newPerson, ...prev])
-        personId = newPerson.id
-      }
-      
-      if (!personId) {
-        toast({
-          title: 'Erro',
-          description: 'Selecione uma pessoa ou preencha os dados do visitante',
-          variant: 'destructive'
-        })
+      if (!formData.personId) {
+        toast.error('Selecione uma pessoa')
         return
       }
 
       const newInteraction: Interaction = {
         id: Date.now().toString(),
-        personId: personId,
+        personId: formData.personId,
         type: formData.type,
         title: formData.title,
         description: formData.description,
         status: formData.status,
+        priority: formData.priority,
         scheduledDate: formData.scheduledDate ? new Date(formData.scheduledDate) : undefined,
         responsibleUserId: 'current-user',
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        eventLocation: formData.type === 'evento' ? formData.eventLocation : undefined,
+        eventStartTime: formData.type === 'evento' ? formData.eventStartTime : undefined,
+        eventEndTime: formData.type === 'evento' ? formData.eventEndTime : undefined
       }
 
       setInteractions(prev => [newInteraction, ...prev])
       setIsCreateDialogOpen(false)
       resetForm()
-      toast({
-        title: 'Sucesso',
-        description: formData.isNewVisitor ? 'Visitante cadastrado e interação criada com sucesso' : 'Interação criada com sucesso'
-      })
+      toast.success('Interação criada com sucesso')
     } catch (error) {
       console.error('Erro ao criar interação:', error)
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível criar a interação',
-        variant: 'destructive'
-      })
+      toast.error('Não foi possível criar a interação')
     }
   }
 
@@ -309,8 +219,12 @@ const InteractionsPage: React.FC = () => {
         title: formData.title,
         description: formData.description,
         status: formData.status,
+        priority: formData.priority,
         scheduledDate: formData.scheduledDate ? new Date(formData.scheduledDate) : undefined,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        eventLocation: formData.type === 'evento' ? formData.eventLocation : undefined,
+        eventStartTime: formData.type === 'evento' ? formData.eventStartTime : undefined,
+        eventEndTime: formData.type === 'evento' ? formData.eventEndTime : undefined
       }
 
       setInteractions(prev => 
@@ -321,17 +235,10 @@ const InteractionsPage: React.FC = () => {
       setIsEditDialogOpen(false)
       setSelectedInteraction(null)
       resetForm()
-      toast({
-        title: 'Sucesso',
-        description: 'Interação atualizada com sucesso'
-      })
+      toast.success('Interação atualizada com sucesso')
     } catch (error) {
       console.error('Erro ao atualizar interação:', error)
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível atualizar a interação',
-        variant: 'destructive'
-      })
+      toast.error('Não foi possível atualizar a interação')
     }
   }
 
@@ -340,17 +247,10 @@ const InteractionsPage: React.FC = () => {
 
     try {
       setInteractions(prev => prev.filter(i => i.id !== interaction.id))
-      toast({
-        title: 'Sucesso',
-        description: 'Interação excluída com sucesso'
-      })
+      toast.success('Interação excluída com sucesso')
     } catch (error) {
       console.error('Erro ao excluir interação:', error)
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível excluir a interação',
-        variant: 'destructive'
-      })
+      toast.error('Não foi possível excluir a interação')
     }
   }
 
@@ -361,11 +261,10 @@ const InteractionsPage: React.FC = () => {
       title: '',
       description: '',
       status: 'pendente',
-      priority: 'media',
-      isNewVisitor: false,
-      visitorName: '',
-      visitorPhone: '',
-      visitorEmail: ''
+      priority: 'normal',
+      eventLocation: '',
+      eventStartTime: '',
+      eventEndTime: ''
     })
   }
 
@@ -379,7 +278,10 @@ const InteractionsPage: React.FC = () => {
       status: interaction.status,
       scheduledDate: interaction.scheduledDate ? 
         interaction.scheduledDate.toISOString().slice(0, 16) : '',
-      priority: 'media'
+      priority: interaction.priority || 'normal',
+      eventLocation: interaction.eventLocation || '',
+      eventStartTime: interaction.eventStartTime || '',
+      eventEndTime: interaction.eventEndTime || ''
     })
     setIsEditDialogOpen(true)
   }
@@ -389,71 +291,13 @@ const InteractionsPage: React.FC = () => {
     setIsDetailsDialogOpen(true)
   }
 
-  const getStatusIcon = (status: InteractionStatus) => {
-    switch (status) {
-      case 'concluido':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'em_andamento':
-        return <Clock className="h-4 w-4 text-blue-500" />
-      case 'pendente':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />
-      case 'cancelado':
-        return <XCircle className="h-4 w-4 text-red-500" />
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />
-    }
-  }
-
-  const getStatusBadge = (status: InteractionStatus) => {
-    const variants = {
-      'concluido': 'default',
-      'em_andamento': 'secondary',
-      'pendente': 'outline',
-      'cancelado': 'destructive'
-    } as const
-
-    const labels = {
-      'concluido': 'Concluído',
-      'em_andamento': 'Em Andamento',
-      'pendente': 'Pendente',
-      'cancelado': 'Cancelado'
-    }
-
-    return (
-      <Badge variant={variants[status]}>
-        {labels[status]}
-      </Badge>
-    )
-  }
-
-  const getTypeIcon = (type: InteractionType) => {
-    switch (type) {
-      case 'atendimento':
-        return <User className="h-4 w-4" />
-      case 'ligacao':
-        return <Phone className="h-4 w-4" />
-      case 'email':
-        return <Mail className="h-4 w-4" />
-      case 'whatsapp':
-        return <MessageSquare className="h-4 w-4" />
-      case 'reuniao':
-        return <Users className="h-4 w-4" />
-      case 'visita':
-        return <MapPin className="h-4 w-4" />
-      default:
-        return <Calendar className="h-4 w-4" />
-    }
-  }
-
-  const getPersonName = (personId: string) => {
-    const person = people.find(p => p.id === personId)
-    return person ? person.name : 'Pessoa não encontrada'
-  }
-
   const filteredInteractions = interactions.filter(interaction => {
+    const person = people.find(p => p.id === interaction.personId)
+    const personName = person ? person.name : 'Pessoa não encontrada'
+    
     const matchesSearch = interaction.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          interaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         getPersonName(interaction.personId).toLowerCase().includes(searchTerm.toLowerCase())
+                         personName.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'todas' || interaction.status === statusFilter
     const matchesType = typeFilter === 'todos' || interaction.type === typeFilter
     
@@ -502,7 +346,7 @@ const InteractionsPage: React.FC = () => {
               </p>
             </div>
           </div>
-          {canCreate && (
+          {canCreate() && (
             <Button onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Nova Interação
@@ -512,555 +356,61 @@ const InteractionsPage: React.FC = () => {
       </div>
 
       {/* Métricas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-blue-500 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-blue-50">
-            <CardTitle className="text-sm font-medium text-gray-900">Total</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.total}</div>
-            <p className="text-xs text-gray-600">
-              Total de interações
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-l-4 border-l-yellow-500 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-yellow-50">
-            <CardTitle className="text-sm font-medium text-gray-900">Pendentes</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.pendentes}</div>
-            <p className="text-xs text-gray-600">
-              Em aberto
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-l-4 border-l-green-500 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-green-50">
-            <CardTitle className="text-sm font-medium text-gray-900">Concluídas</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.concluidas}</div>
-            <p className="text-xs text-gray-600">
-              44% taxa de conclusão
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-l-4 border-l-red-500 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-red-50">
-            <CardTitle className="text-sm font-medium text-gray-900">Atrasadas</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{metrics.atrasadas}</div>
-            <p className="text-xs text-gray-600">
-              Atenção necessária
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <InteractionMetrics 
+        total={metrics.total}
+        pendentes={metrics.pendentes}
+        concluidas={metrics.concluidas}
+        atrasadas={metrics.atrasadas}
+      />
 
       {/* Filtros e Busca */}
-      <Card className="border-l-4 border-l-indigo-500 shadow-sm">
-        <CardHeader className="bg-indigo-50">
-          <CardTitle className="flex items-center gap-2 text-gray-900">
-            <Filter className="h-5 w-5 text-indigo-500" />
-            Filtros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por título, pessoa ou descrição..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
-            <Select value={statusFilter} onValueChange={(value: InteractionStatus | 'todas') => setStatusFilter(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todos os Status</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
-                <SelectItem value="em_andamento">Em Andamento</SelectItem>
-                <SelectItem value="concluido">Concluído</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={typeFilter} onValueChange={(value: InteractionType | 'todos') => setTypeFilter(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Tipos</SelectItem>
-                <SelectItem value="atendimento">Atendimento</SelectItem>
-                <SelectItem value="ligacao">Ligação</SelectItem>
-                <SelectItem value="email">E-mail</SelectItem>
-                <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                <SelectItem value="reuniao">Reunião</SelectItem>
-                <SelectItem value="visita">Visita</SelectItem>
-                <SelectItem value="evento">Evento</SelectItem>
-                <SelectItem value="outro">Outro</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <InteractionFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
+      />
 
       {/* Tabela de Interações */}
-      <Card className="border-l-4 border-l-emerald-500 shadow-sm">
-        <CardHeader className="bg-emerald-50">
-          <CardTitle className="flex items-center gap-2 text-gray-900">
-            <MessageSquare className="h-5 w-5 text-emerald-500" />
-            Interações ({filteredInteractions.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Título</TableHead>
-                <TableHead>Pessoa</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data Agendada</TableHead>
-                <TableHead>Criado em</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInteractions.map((interaction) => (
-                <TableRow key={interaction.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getTypeIcon(interaction.type)}
-                      <span className="capitalize">{interaction.type}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{interaction.title}</TableCell>
-                  <TableCell>{getPersonName(interaction.personId)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(interaction.status)}
-                      {getStatusBadge(interaction.status)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {interaction.scheduledDate ? formatDateTime(interaction.scheduledDate) : '-'}
-                  </TableCell>
-                  <TableCell>{formatDate(interaction.createdAt)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openDetailsDialog(interaction)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {canEdit && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditDialog(interaction)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteInteraction(interaction)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {filteredInteractions.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Nenhuma interação encontrada</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <InteractionTable
+        interactions={filteredInteractions}
+        people={people}
+        onViewDetails={openDetailsDialog}
+        onEdit={canEdit() ? openEditDialog : undefined}
+        onDelete={canDelete() ? handleDeleteInteraction : undefined}
+      />
 
       {/* Dialog para Nova Interação */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Nova Interação</DialogTitle>
-            <DialogDescription>
-              Registre um novo atendimento ou acompanhamento
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Vincular Pessoa *</Label>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="existing-person"
-                      name="person-type"
-                      checked={!formData.isNewVisitor}
-                      onChange={() => setFormData(prev => ({ ...prev, isNewVisitor: false, personId: '', visitorName: '', visitorPhone: '', visitorEmail: '' }))}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <Label htmlFor="existing-person" className="text-sm font-normal">Pessoa cadastrada</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="new-visitor"
-                      name="person-type"
-                      checked={formData.isNewVisitor}
-                      onChange={() => setFormData(prev => ({ ...prev, isNewVisitor: true, personId: '' }))}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <Label htmlFor="new-visitor" className="text-sm font-normal">Novo visitante</Label>
-                  </div>
-                </div>
-                {!formData.isNewVisitor && (
-                  <Select value={formData.personId} onValueChange={(value) => setFormData(prev => ({ ...prev, personId: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma pessoa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {people.map((person) => (
-                        <SelectItem key={person.id} value={person.id}>
-                          {person.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="type">Tipo *</Label>
-                <Select value={formData.type} onValueChange={(value: InteractionType) => setFormData(prev => ({ ...prev, type: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tipo de interação" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="atendimento">Atendimento</SelectItem>
-                    <SelectItem value="ligacao">Ligação</SelectItem>
-                    <SelectItem value="email">E-mail</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="reuniao">Reunião</SelectItem>
-                    <SelectItem value="visita">Visita</SelectItem>
-                    <SelectItem value="evento">Evento</SelectItem>
-                    <SelectItem value="outro">Outro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            {/* Campos para novo visitante */}
-            {formData.isNewVisitor && (
-              <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
-                <h4 className="font-medium text-sm text-gray-700">Dados do Visitante</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="visitorName">Nome do Visitante *</Label>
-                    <Input
-                      id="visitorName"
-                      placeholder="Digite o nome completo"
-                      value={formData.visitorName || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, visitorName: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="visitorPhone">Telefone</Label>
-                    <Input
-                      id="visitorPhone"
-                      placeholder="(00) 00000-0000"
-                      value={formData.visitorPhone || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, visitorPhone: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="visitorEmail">E-mail</Label>
-                  <Input
-                    id="visitorEmail"
-                    type="email"
-                    placeholder="email@exemplo.com"
-                    value={formData.visitorEmail || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, visitorEmail: e.target.value }))}
-                  />
-                </div>
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="title">Título *</Label>
-              <Input
-                id="title"
-                placeholder="Título da interação"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição *</Label>
-              <textarea
-                id="description"
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Descreva a interação..."
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value: InteractionStatus) => setFormData(prev => ({ ...prev, status: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pendente">Pendente</SelectItem>
-                    <SelectItem value="em_andamento">Em Andamento</SelectItem>
-                    <SelectItem value="concluido">Concluído</SelectItem>
-                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="priority">Prioridade</Label>
-                <Select value={formData.priority} onValueChange={(value: 'baixa' | 'media' | 'alta') => setFormData(prev => ({ ...prev, priority: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Prioridade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="baixa">Baixa</SelectItem>
-                    <SelectItem value="media">Média</SelectItem>
-                    <SelectItem value="alta">Alta</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="scheduledDate">Data Agendada</Label>
-                <Input
-                  id="scheduledDate"
-                  type="datetime-local"
-                  value={formData.scheduledDate || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, scheduledDate: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="followUpDate">Data de Follow-up</Label>
-                <Input
-                  id="followUpDate"
-                  type="date"
-                  value={formData.followUpDate || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, followUpDate: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCreateInteraction}>
-              Salvar Interação
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+       <InteractionFormDialog
+         isOpen={isCreateDialogOpen}
+         isEditMode={false}
+         formData={formData}
+         people={people}
+         onClose={() => setIsCreateDialogOpen(false)}
+         onSubmit={handleCreateInteraction}
+         onFormDataChange={(data) => setFormData(prev => ({ ...prev, ...data }))}
+       />
 
-      {/* Dialog para Editar Interação */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Editar Interação</DialogTitle>
-            <DialogDescription>
-              Atualize as informações da interação
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-person">Pessoa *</Label>
-                <Select value={formData.personId} onValueChange={(value) => setFormData(prev => ({ ...prev, personId: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma pessoa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {people.map((person) => (
-                      <SelectItem key={person.id} value={person.id}>
-                        {person.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-type">Tipo *</Label>
-                <Select value={formData.type} onValueChange={(value: InteractionType) => setFormData(prev => ({ ...prev, type: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tipo de interação" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="atendimento">Atendimento</SelectItem>
-                    <SelectItem value="ligacao">Ligação</SelectItem>
-                    <SelectItem value="email">E-mail</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="reuniao">Reunião</SelectItem>
-                    <SelectItem value="visita">Visita</SelectItem>
-                    <SelectItem value="evento">Evento</SelectItem>
-                    <SelectItem value="outro">Outro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-title">Título *</Label>
-              <Input
-                id="edit-title"
-                placeholder="Título da interação"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Descrição *</Label>
-              <textarea
-                id="edit-description"
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Descreva a interação..."
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-status">Status</Label>
-                <Select value={formData.status} onValueChange={(value: InteractionStatus) => setFormData(prev => ({ ...prev, status: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pendente">Pendente</SelectItem>
-                    <SelectItem value="em_andamento">Em Andamento</SelectItem>
-                    <SelectItem value="concluido">Concluído</SelectItem>
-                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-scheduledDate">Data Agendada</Label>
-                <Input
-                  id="edit-scheduledDate"
-                  type="datetime-local"
-                  value={formData.scheduledDate || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, scheduledDate: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleEditInteraction}>
-              Atualizar Interação
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+       {/* Dialog para Editar Interação */}
+       <InteractionFormDialog
+         isOpen={isEditDialogOpen}
+         isEditMode={true}
+         formData={formData}
+         people={people}
+         onClose={() => setIsEditDialogOpen(false)}
+         onSubmit={handleEditInteraction}
+         onFormDataChange={(data) => setFormData(prev => ({ ...prev, ...data }))}
+       />
 
-      {/* Dialog para Detalhes da Interação */}
-      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Detalhes da Interação</DialogTitle>
-          </DialogHeader>
-          {selectedInteraction && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Pessoa</Label>
-                  <p className="text-sm">{getPersonName(selectedInteraction.personId)}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Tipo</Label>
-                  <div className="flex items-center gap-2">
-                    {getTypeIcon(selectedInteraction.type)}
-                    <span className="text-sm capitalize">{selectedInteraction.type}</span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Título</Label>
-                <p className="text-sm font-medium">{selectedInteraction.title}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Descrição</Label>
-                <p className="text-sm">{selectedInteraction.description}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Status</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getStatusIcon(selectedInteraction.status)}
-                    {getStatusBadge(selectedInteraction.status)}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Data Agendada</Label>
-                  <p className="text-sm">
-                    {selectedInteraction.scheduledDate ? formatDateTime(selectedInteraction.scheduledDate) : 'Não agendada'}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Criado em</Label>
-                  <p className="text-sm">{formatDateTime(selectedInteraction.createdAt)}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Atualizado em</Label>
-                  <p className="text-sm">{formatDateTime(selectedInteraction.updatedAt)}</p>
-                </div>
-              </div>
-              {selectedInteraction.completedDate && (
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Concluído em</Label>
-                  <p className="text-sm">{formatDateTime(selectedInteraction.completedDate)}</p>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
-              Fechar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+       {/* Dialog para Detalhes da Interação */}
+       <InteractionDetailsDialog
+         isOpen={isDetailsDialogOpen}
+         interaction={selectedInteraction}
+         people={people}
+         onClose={() => setIsDetailsDialogOpen(false)}
+       />
     </div>
   )
 }
