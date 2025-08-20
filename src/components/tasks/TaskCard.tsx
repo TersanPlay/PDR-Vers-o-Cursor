@@ -193,7 +193,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
     <Card className={`transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
       task.status === 'completed' ? 'opacity-80' : ''
     } ${
-      isOverdue ? 'border-l-4 border-l-red-500 bg-gradient-to-br from-red-50 to-pink-50' : getCardBackground(task.status)
+      getCardBackground(task.status)
+    } ${
+      isOverdue && task.status !== 'in_progress' ? 'border-l-red-500 bg-gradient-to-br from-red-50 to-pink-50' : ''
     } ${
       isSelected ? 'ring-2 ring-blue-500' : ''
     }`}>

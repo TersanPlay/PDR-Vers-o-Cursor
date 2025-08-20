@@ -11,6 +11,7 @@ import { personService } from '@/services/personService'
 import { maskPhone } from '@/utils/lgpd'
 import { Person, SearchFilters } from '@/types'
 import { useToast } from '@/components/ui/use-toast'
+import { formatDate } from '@/lib/utils'
 
 const PersonSearchPage: React.FC = () => {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ const PersonSearchPage: React.FC = () => {
   const [results, setResults] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const searchTimeoutRef = useRef<number | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSearch = useCallback(async () => {
     // Verificar se o campo de busca foi preenchido
@@ -127,9 +128,7 @@ const PersonSearchPage: React.FC = () => {
     }
   };
 
-  const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleDateString('pt-BR');
-  };
+
 
   return (
     <div className="space-y-6">
@@ -139,7 +138,7 @@ const PersonSearchPage: React.FC = () => {
         icon={Search}
         action={canCreate() ? {
           label: 'Nova Pessoa',
-          onClick: () => navigate('/pessoa/novo'),
+          onClick: () => navigate('/person/new'),
           icon: Plus
         } : undefined}
       />
@@ -331,7 +330,7 @@ const PersonSearchPage: React.FC = () => {
             </p>
             {canCreate() && (
               <Button 
-                onClick={() => navigate('/pessoa/novo')}
+                onClick={() => navigate('/person/new')}
                 className="mt-4"
               >
                 <Plus className="h-4 w-4 mr-2" />

@@ -284,6 +284,7 @@ class AuthService {
       municipality: registrationData.municipality,
       city: registrationData.city,
       institutionalEmail: registrationData.institutionalEmail,
+      loginEmail: registrationData.adminEmail,
       adminName: registrationData.adminName,
       adminEmail: registrationData.adminEmail,
       status: 'pendente' as const,

@@ -35,4 +35,29 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor libraries
+          'react-vendor': ['react', 'react-dom'],
+          'ui-vendor': ['@radix-ui/react-avatar', '@radix-ui/react-dialog', '@radix-ui/react-select', '@radix-ui/react-tabs'],
+          'utils-vendor': ['date-fns', 'lucide-react', 'sonner'],
+          'form-vendor': ['react-hook-form', '@hookform/resolvers'],
+          // App chunks
+          'pages': [
+            './src/pages/PersonSearchPage',
+            './src/pages/PersonFormPage',
+            './src/pages/PersonProfilePage'
+          ],
+          'cabinet-management': ['./src/pages/CabinetManagementPage'],
+          'task-management': ['./src/pages/TaskManagementPage'],
+          'reports': ['./src/pages/ReportsPage'],
+          'interactions': ['./src/pages/InteractionsPage'],
+          'settings': ['./src/pages/SettingsPage']
+        }
+      }
+    }
+  }
 })

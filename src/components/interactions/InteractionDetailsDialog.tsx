@@ -31,6 +31,8 @@ const InteractionDetailsDialog: React.FC<InteractionDetailsDialogProps> = ({
     switch (status) {
       case 'pendente':
         return <AlertCircle className="h-4 w-4 text-yellow-500" />
+      case 'em_progresso':
+        return <Clock className="h-4 w-4 text-orange-500" />
       case 'em_andamento':
         return <Pause className="h-4 w-4 text-blue-500" />
       case 'concluido':
@@ -45,6 +47,7 @@ const InteractionDetailsDialog: React.FC<InteractionDetailsDialogProps> = ({
   const getStatusBadge = (status: InteractionStatus) => {
     const variants = {
       pendente: 'secondary',
+      em_progresso: 'default',
       em_andamento: 'default',
       concluido: 'default',
       cancelado: 'destructive'
@@ -52,6 +55,7 @@ const InteractionDetailsDialog: React.FC<InteractionDetailsDialogProps> = ({
 
     const labels = {
       pendente: 'Pendente',
+      em_progresso: 'Em Progresso',
       em_andamento: 'Em Andamento',
       concluido: 'Concluído',
       cancelado: 'Cancelado'

@@ -25,7 +25,7 @@ class PersonService {
       const person: Person = {
         id: `person-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         ...personData,
-        birthDate: new Date(personData.birthDate),
+        birthDate: personData.birthDate ? new Date(personData.birthDate) : new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: userId,

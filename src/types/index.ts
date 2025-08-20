@@ -148,6 +148,7 @@ export interface Department {
   responsiblePosition?: string
   linkedOrganSector: string
   location: string
+  institutionalPhone?: string
   institutionalEmail?: string
   adminName: string
   adminEmail: string
@@ -222,6 +223,7 @@ export interface AuditLog {
 // Tipos para formulários
 export interface PersonFormData {
   name: string
+  birthDate?: string
   email?: string
   phone?: string
   whatsapp?: string
@@ -292,6 +294,20 @@ export interface CabinetRegistrationData {
   municipality: string
   city: string
   institutionalEmail: string
+  address?: {
+    street: string
+    number: string
+    complement?: string
+    neighborhood: string
+    zipCode: string
+  }
+  councilMemberPhoto?: File
+  website?: string
+  socialMedia?: {
+    facebook?: string
+    instagram?: string
+    tiktok?: string
+  }
   // Dados do usuário administrador
   adminName: string
   adminEmail: string

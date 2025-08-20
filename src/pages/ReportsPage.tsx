@@ -13,10 +13,17 @@ import { useToast } from '@/components/ui/use-toast';
 import { usePermissions } from '@/contexts/AuthContext';
 import { Download, FileText, Users, Calendar, Activity, MessageSquare, Phone, Mail, MapPin, User, BarChart3, FileSpreadsheet, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { InteractionType, InteractionStatus } from '@/types';
-// Bibliotecas para exportação
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+// Lazy loading das bibliotecas de exportação
+const loadExportLibraries = async () => {
+  const [jsPDF, XLSX] = await Promise.all([
+    import('jspdf').then(module => {
+      import('jspdf-autotable');
+      return module.default;
+    }),
+    import('xlsx')
+  ]);
+  return { jsPDF, XLSX };
+};
 
 // Declaração de tipos para jsPDF autoTable
 declare module 'jspdf' {
@@ -235,7 +242,8 @@ const ReportsPage: React.FC = () => {
       const fileName = `${reportName.replace(/\s+/g, '_')}_${timestamp}`;
 
       if (format === 'pdf') {
-        // Exportar como PDF
+        // Carregar biblioteca jsPDF dinamicamente
+        const { jsPDF } = await loadExportLibraries();
         const doc = new jsPDF();
         
         // Verificar se o jsPDF foi inicializado corretamente
@@ -342,6 +350,9 @@ const ReportsPage: React.FC = () => {
         doc.save(`${fileName}.pdf`);
         
       } else if (format === 'excel') {
+        // Carregar biblioteca XLSX dinamicamente
+        const { XLSX } = await loadExportLibraries();
+        
         // Exportar como Excel
         const worksheetData = reportData.map((item, index) => {
           const categoria = item.tipo || item.status || item.vinculo || item.bairro || item.faixaEtaria;

@@ -53,6 +53,8 @@ const InteractionTable: React.FC<InteractionTableProps> = ({
     switch (status) {
       case 'concluido':
         return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'em_progresso':
+        return <Clock className="h-4 w-4 text-orange-500" />
       case 'em_andamento':
         return <Clock className="h-4 w-4 text-blue-500" />
       case 'pendente':
@@ -67,6 +69,7 @@ const InteractionTable: React.FC<InteractionTableProps> = ({
   const getStatusBadge = (status: InteractionStatus) => {
     const variants = {
       'concluido': 'default',
+      'em_progresso': 'secondary',
       'em_andamento': 'secondary',
       'pendente': 'outline',
       'cancelado': 'destructive'
@@ -74,6 +77,7 @@ const InteractionTable: React.FC<InteractionTableProps> = ({
 
     const labels = {
       'concluido': 'Concluído',
+      'em_progresso': 'Em Progresso',
       'em_andamento': 'Em Andamento',
       'pendente': 'Pendente',
       'cancelado': 'Cancelado'

@@ -1,25 +1,35 @@
+import React, { Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { MaintenanceProvider, useMaintenance } from './contexts/MaintenanceContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
-import { LoginPage } from './pages/LoginPage'
-import LandingPage from './pages/LandingPage'
-import CabinetRegistrationPage from './pages/CabinetRegistrationPage'
-import DashboardPage from './pages/DashboardPage'
-import PersonFormPage from './pages/PersonFormPage'
-import PersonSearchPage from './pages/PersonSearchPage'
-import PersonProfilePage from './pages/PersonProfilePage'
-import ReportsPage from './pages/ReportsPage'
-import SettingsPage from './pages/SettingsPage'
-import InteractionsPage from './pages/InteractionsPage'
-import CabinetManagementPage from './pages/CabinetManagementPage'
-import TaskManagementPage from './pages/TaskManagementPage'
 import { Layout } from './components/Layout'
 import { Toaster } from './components/ui/toaster'
 import MaintenanceBanner from './components/MaintenanceBanner'
 import MaintenanceBlock from './components/MaintenanceBlock'
 import MaintenanceNotification from './components/MaintenanceNotification'
 import './App.css'
+
+// Lazy loading das páginas
+const LoginPage = React.lazy(() => import('./pages/LoginPage').then(module => ({ default: module.LoginPage })))
+const LandingPage = React.lazy(() => import('./pages/LandingPage'))
+const CabinetRegistrationPage = React.lazy(() => import('./pages/CabinetRegistrationPage'))
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'))
+const PersonFormPage = React.lazy(() => import('./pages/PersonFormPage'))
+const PersonSearchPage = React.lazy(() => import('./pages/PersonSearchPage'))
+const PersonProfilePage = React.lazy(() => import('./pages/PersonProfilePage'))
+const ReportsPage = React.lazy(() => import('./pages/ReportsPage'))
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'))
+const InteractionsPage = React.lazy(() => import('./pages/InteractionsPage'))
+const CabinetManagementPage = React.lazy(() => import('./pages/CabinetManagementPage'))
+const TaskManagementPage = React.lazy(() => import('./pages/TaskManagementPage'))
+
+// Componente de loading
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+  </div>
+)
 
 // Componente interno que usa o contexto de manutenção
 function AppContent() {
@@ -37,15 +47,16 @@ function AppContent() {
           {/* Bloqueio do sistema durante manutenção */}
           <MaintenanceBlock isBlocked={isSystemBlocked} />
           
-          <Routes>
-            {/* Rota pública da landing page */}
-            <Route path="/" element={<LandingPage />} />
-            
-            {/* Rota pública de login */}
-            <Route path="/login" element={<LoginPage />} />
-            
-            {/* Rota pública de cadastro de gabinete */}
-            <Route path="/cadastro" element={<CabinetRegistrationPage />} />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Rota pública da landing page */}
+              <Route path="/" element={<LandingPage />} />
+              
+              {/* Rota pública de login */}
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* Rota pública de cadastro de gabinete */}
+              <Route path="/cadastro" element={<CabinetRegistrationPage />} />
             
             <Route path="/dashboard" element={
               <ProtectedRoute>
@@ -118,7 +129,8 @@ function AppContent() {
                 </Layout>
               </ProtectedRoute>
             } />
-          </Routes>
+            </Routes>
+          </Suspense>
           <Toaster />
         </div>
       </Router>
