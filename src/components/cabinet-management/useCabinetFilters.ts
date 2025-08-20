@@ -97,17 +97,14 @@ export const useCabinetFilters = ({ cabinets }: UseCabinetFiltersProps): UseCabi
             aValue = a.name.toLowerCase()
             bValue = b.name.toLowerCase()
             break
-          case 'councilor':
-            aValue = a.councilMemberName.toLowerCase()
-            bValue = b.councilMemberName.toLowerCase()
-            break
+
           case 'status':
             aValue = a.status
             bValue = b.status
             break
-          case 'createdAt':
-            aValue = new Date(a.createdAt)
-            bValue = new Date(b.createdAt)
+          case 'registrationDate':
+            aValue = new Date(a.registrationDate)
+            bValue = new Date(b.registrationDate)
             break
           default:
             return 0

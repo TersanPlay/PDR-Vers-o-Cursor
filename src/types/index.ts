@@ -48,6 +48,7 @@ export type RelationshipType =
   | 'fornecedor_prestador'
   | 'voluntario'
   | 'candidato'
+  | 'eleitor'
   | 'outros'
 
 export interface Address {
@@ -138,6 +139,27 @@ export interface DashboardMetrics {
   peopleByNeighborhood: Record<string, number>
 }
 
+// Tipos para departamentos
+export interface Department {
+  id: string
+  name: string
+  councilMemberName: string
+  areaOfActivity: string
+  responsiblePosition?: string
+  linkedOrganSector: string
+  location: string
+  institutionalEmail?: string
+  adminName: string
+  adminEmail: string
+  status: 'ativo' | 'pendente' | 'inativo'
+  registrationDate: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+// Tipo união para gabinetes e departamentos
+export type CabinetOrDepartment = Cabinet | Department
+
 // Tipos para gabinetes
 export interface Cabinet {
   id: string
@@ -162,6 +184,7 @@ export interface Cabinet {
   }
   adminName: string
   adminEmail: string
+  loginEmail: string
   status: 'ativo' | 'pendente' | 'inativo'
   registrationDate: Date
   createdAt: Date
@@ -268,27 +291,10 @@ export interface CabinetRegistrationData {
   councilMemberName: string
   municipality: string
   city: string
-  address?: {
-    street: string
-    number: string
-    complement?: string
-    neighborhood: string
-    zipCode: string
-  }
-  institutionalPhone?: string
-  institutionalEmail?: string
-  website?: string
-  socialMedia?: {
-    facebook?: string
-    instagram?: string
-    tiktok?: string
-  }
-  // Upload de brasão ou foto do vereador
-  councilMemberPhoto?: File | null
+  institutionalEmail: string
   // Dados do usuário administrador
   adminName: string
   adminEmail: string
-  adminPhone?: string
   password: string
   confirmPassword: string
 }

@@ -2,14 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 // Input component import removed since it's not being used
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 // import { Pagination } from '../components/ui/Pagination';
 import { useToast } from '@/components/ui/use-toast';
-// Removed unused import of personService
+
 import { usePermissions } from '@/contexts/AuthContext';
 import { Download, FileText, Users, Calendar, Activity, MessageSquare, Phone, Mail, MapPin, User, BarChart3, FileSpreadsheet, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { InteractionType, InteractionStatus } from '@/types';

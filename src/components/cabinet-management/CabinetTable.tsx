@@ -20,11 +20,7 @@ import {
   Edit,
   Trash2,
   Mail,
-  Phone,
-  Globe,
-  MapPin,
   Calendar,
-  User,
   MoreVertical,
   MessageSquare,
   History,
@@ -101,18 +97,7 @@ export const CabinetTable: React.FC<CabinetTableProps> = ({
                 Gabinete
               </SortableHeader>
             </TableHead>
-            <TableHead className={densityClasses}>
-              <SortableHeader
-                field="councilor"
-                sortField={sortField}
-                sortDirection={sortDirection}
-                onSort={onSort}
-              >
-                Vereador(a)
-              </SortableHeader>
-            </TableHead>
-            <TableHead className={densityClasses}>Município</TableHead>
-            <TableHead className={densityClasses}>Contato</TableHead>
+            <TableHead className={densityClasses}>E-mail Login</TableHead>
             <TableHead className={densityClasses}>
               <SortableHeader
                 field="status"
@@ -125,12 +110,12 @@ export const CabinetTable: React.FC<CabinetTableProps> = ({
             </TableHead>
             <TableHead className={densityClasses}>
               <SortableHeader
-                field="createdAt"
+                field="registrationDate"
                 sortField={sortField}
                 sortDirection={sortDirection}
                 onSort={onSort}
               >
-                Criado em
+                Data de Cadastro
               </SortableHeader>
             </TableHead>
             <TableHead className={`${densityClasses} w-20`}>Ações</TableHead>
@@ -158,39 +143,10 @@ export const CabinetTable: React.FC<CabinetTableProps> = ({
               </TableCell>
               <TableCell className={densityClasses}>
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium">{cabinet.councilMemberName}</span>
-                </div>
-              </TableCell>
-              <TableCell className={densityClasses}>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                  <span>{cabinet.municipality}</span>
-                </div>
-              </TableCell>
-              <TableCell className={densityClasses}>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-3 w-3 text-gray-400" />
-                    <span className="truncate max-w-40">{cabinet.institutionalEmail}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-3 w-3 text-gray-400" />
-                    <span>{cabinet.institutionalPhone}</span>
-                  </div>
-                  {cabinet.website && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Globe className="h-3 w-3 text-gray-400" />
-                      <a 
-                        href={cabinet.website} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline truncate max-w-40"
-                      >
-                        Site
-                      </a>
-                    </div>
-                  )}
+                  <Mail className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium text-blue-600 truncate max-w-48">
+                    {(cabinet as any).loginEmail || cabinet.adminEmail}
+                  </span>
                 </div>
               </TableCell>
               <TableCell className={densityClasses}>
@@ -199,7 +155,7 @@ export const CabinetTable: React.FC<CabinetTableProps> = ({
               <TableCell className={densityClasses}>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Calendar className="h-4 w-4" />
-                  <span>{new Date(cabinet.createdAt).toLocaleDateString('pt-BR')}</span>
+                  <span>{cabinet.registrationDate.toLocaleDateString('pt-BR')}</span>
                 </div>
               </TableCell>
               <TableCell className={densityClasses}>

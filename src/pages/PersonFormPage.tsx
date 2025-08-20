@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { PageHeader, FormCard, LoadingSpinner } from '@/components/ui';
 import { useToast } from '@/components/ui/use-toast';
 import { personService } from '@/services/personService';
-import { cepService } from '@/services/cepService';
 import { validateCEP, validatePhone } from '@/utils/validation';
 import { User, MapPin } from 'lucide-react';
 import type { PersonFormData } from '@/types';
@@ -21,7 +20,7 @@ const personSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   phone: z.string().refine(validatePhone, 'Telefone inválido'),
   email: z.string().email('E-mail inválido').or(z.literal('')),
-  relationshipType: z.enum(['cidadao_civil', 'parceiro', 'representante', 'colaborador_assessor', 'fornecedor_prestador', 'voluntario', 'candidato', 'outros'] as const, {
+  relationshipType: z.enum(['cidadao_civil', 'parceiro', 'representante', 'colaborador_assessor', 'fornecedor_prestador', 'voluntario', 'candidato', 'eleitor', 'outros'] as const, {
     required_error: 'Tipo de vínculo é obrigatório',
   }),
   address: z.object({
@@ -147,10 +146,10 @@ const PersonFormPage: React.FC = () => {
       };
 
       if (isEditing && id) {
-        await personService.updatePerson(id, personData);
+        await personService.updatePerson(id, personData, user.id);
         toast.success('Pessoa atualizada com sucesso!');
       } else {
-        await personService.createPerson(personData);
+        await personService.createPerson(personData, user.id);
         toast.success('Pessoa cadastrada com sucesso!');
       }
       
@@ -244,6 +243,7 @@ const PersonFormPage: React.FC = () => {
                 <option value="fornecedor_prestador">Fornecedor/Prestador de Serviço</option>
                 <option value="voluntario">Voluntário</option>
                 <option value="candidato">Candidato</option>
+                <option value="eleitor">Eleitor</option>
                 <option value="outros">Outros</option>
               </select>
               {errors.relationshipType && (

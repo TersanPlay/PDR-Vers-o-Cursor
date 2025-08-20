@@ -7,15 +7,9 @@ import {
   Eye,
   Edit,
   Trash2,
-  Download,
-  Mail,
-  Phone,
-  Globe,
-  MapPin,
   User,
   CheckCircle,
   XCircle,
-  MessageSquare,
   Send,
   History,
   Paperclip,
@@ -28,7 +22,9 @@ import {
   Copy,
   EyeOff,
   Clock,
-  Plus
+  Plus,
+  Download,
+  MessageSquare
 } from 'lucide-react'
 import {
   Dialog,
@@ -37,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-// Imports removidos - não utilizados
+
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -108,6 +104,7 @@ type NotificationSettings = {
 const mockCabinets: (Cabinet & { 
   adminName: string
   adminEmail: string
+  loginEmail: string // E-mail usado para login no sistema
   status: 'ativo' | 'pendente' | 'inativo'
   registrationDate: Date
 })[] = [
@@ -120,19 +117,14 @@ const mockCabinets: (Cabinet & {
     address: {
       street: 'Rua das Flores, 123',
       number: '123',
-      complement: 'Sala 101',
+      complement: 'Sala 101', 
       neighborhood: 'Centro',
       zipCode: '01234-567'
     },
-    institutionalPhone: '(11) 3333-4444',
     institutionalEmail: 'gabinete@joaosilva.gov.br',
-    website: 'https://joaosilva.gov.br',
-    socialMedia: {
-      facebook: 'https://facebook.com/joaosilva',
-      instagram: 'https://instagram.com/joaosilva'
-    },
     adminName: 'Maria Santos',
     adminEmail: 'admin@joaosilva.gov.br',
+    loginEmail: 'maria.santos@gabinete.joaosilva.gov.br', // E-mail para login
     status: 'ativo',
     registrationDate: new Date('2024-01-15'),
     createdAt: new Date('2024-01-15'),
@@ -150,10 +142,12 @@ const mockCabinets: (Cabinet & {
       neighborhood: 'Copacabana',
       zipCode: '22070-001'
     },
-    institutionalPhone: '(21) 2222-3333',
+
     institutionalEmail: 'contato@anacosta.gov.br',
+
     adminName: 'Carlos Oliveira',
     adminEmail: 'carlos@anacosta.gov.br',
+    loginEmail: 'carlos.oliveira@gabinete.anacosta.gov.br', // E-mail para login
     status: 'pendente',
     registrationDate: new Date('2024-02-20'),
     createdAt: new Date('2024-02-20'),
@@ -171,10 +165,12 @@ const mockCabinets: (Cabinet & {
       neighborhood: 'Savassi',
       zipCode: '30112-000'
     },
-    institutionalPhone: '(31) 3333-4444',
+
     institutionalEmail: 'gabinete@pedrolima.gov.br',
+
     adminName: 'Lucia Santos',
     adminEmail: 'lucia@pedrolima.gov.br',
+    loginEmail: 'lucia.santos@gabinete.pedrolima.gov.br', // E-mail para login
     status: 'ativo',
     registrationDate: new Date('2024-03-10'),
     createdAt: new Date('2024-03-10'),
@@ -287,7 +283,7 @@ const CabinetManagementPage: React.FC = () => {
   } = useCabinetFilters({ cabinets })
   
   // Estados para modais e dialogs
-  const [selectedCabinet, setSelectedCabinet] = useState<typeof mockCabinets[0] | null>(null)
+  const [selectedCabinet, setSelectedCabinet] = useState<Cabinet | null>(null)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [showCommentDialog, setShowCommentDialog] = useState(false)
   const [selectedCabinetForComment, setSelectedCabinetForComment] = useState<Cabinet | null>(null)
@@ -340,17 +336,17 @@ const CabinetManagementPage: React.FC = () => {
   }
 
   // Handlers
-  const handleViewCabinet = (cabinet: typeof mockCabinets[0]) => {
+  const handleViewCabinet = (cabinet: Cabinet) => {
     setSelectedCabinet(cabinet)
     setIsViewDialogOpen(true)
   }
 
-  const handleShowMessages = (cabinet: typeof mockCabinets[0]) => {
+  const handleShowMessages = (cabinet: Cabinet) => {
     setSelectedCabinetForMessages(cabinet)
     setShowMessagesDialog(true)
   }
 
-  const handleManageCredentials = async (cabinet: typeof mockCabinets[0]) => {
+  const handleManageCredentials = async (cabinet: Cabinet) => {
     setSelectedCabinetForCredentials(cabinet)
     setIsLoadingCredentials(true)
     setCredentialsError('')
@@ -411,7 +407,7 @@ const CabinetManagementPage: React.FC = () => {
 
   const handleConfirmStatusChange = () => {
     if (selectedCabinetForComment && newStatus) {
-      const oldStatus = (selectedCabinetForComment as typeof mockCabinets[0]).status
+      const oldStatus = selectedCabinetForComment.status
       
       // Atualizar o status do gabinete
       setCabinets(prev => prev.map(cabinet => 
@@ -765,11 +761,9 @@ const CabinetManagementPage: React.FC = () => {
 
   const exportData = () => {
     const csvContent = [
-      ['Nome do Gabinete', 'Vereador', 'Município', 'Administrador', 'Email Admin', 'Status', 'Data Cadastro'],
+      ['Nome do Gabinete', 'Administrador', 'Email Admin', 'Status', 'Data Cadastro'],
       ...filteredCabinets.map(cabinet => [
         cabinet.name,
-        cabinet.councilMemberName,
-        cabinet.municipality,
         cabinet.adminName,
         cabinet.adminEmail,
         cabinet.status,
@@ -951,20 +945,16 @@ const CabinetManagementPage: React.FC = () => {
                       <p className="text-gray-900">{selectedCabinet.name}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Vereador</label>
-                      <p className="text-gray-900">{selectedCabinet.councilMemberName}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Município</label>
-                      <p className="text-gray-900">{selectedCabinet.municipality}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Cidade</label>
-                      <p className="text-gray-900">{selectedCabinet.city}</p>
+                      <label className="text-sm font-medium text-gray-600">E-mail Institucional</label>
+                      <p className="text-gray-900">{selectedCabinet.institutionalEmail}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">Status</label>
                       <div className="mt-1">{getStatusBadge(selectedCabinet.status)}</div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Data de Cadastro</label>
+                      <p className="text-gray-900">{selectedCabinet.registrationDate.toLocaleDateString('pt-BR')}</p>
                     </div>
                   </div>
                 </div>
@@ -983,92 +973,9 @@ const CabinetManagementPage: React.FC = () => {
                       <label className="text-sm font-medium text-gray-600">E-mail</label>
                       <p className="text-gray-900">{selectedCabinet.adminEmail}</p>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Data de Cadastro</label>
-                      <p className="text-gray-900">{selectedCabinet.registrationDate.toLocaleDateString('pt-BR')}</p>
-                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Endereço */}
-              {selectedCabinet.address && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-blue-600" />
-                    Endereço
-                  </h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-gray-900">
-                      {selectedCabinet.address.street}, {selectedCabinet.address.number}
-                      {selectedCabinet.address.complement && `, ${selectedCabinet.address.complement}`}
-                    </p>
-                    <p className="text-gray-600">
-                      {selectedCabinet.address.neighborhood} - CEP: {selectedCabinet.address.zipCode}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Contatos */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Contatos</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedCabinet.institutionalPhone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span>{selectedCabinet.institutionalPhone}</span>
-                    </div>
-                  )}
-                  {selectedCabinet.institutionalEmail && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span>{selectedCabinet.institutionalEmail}</span>
-                    </div>
-                  )}
-                  {selectedCabinet.website && (
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4 text-gray-400" />
-                      <a href={selectedCabinet.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        {selectedCabinet.website}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Redes Sociais */}
-              {selectedCabinet.socialMedia && Object.values(selectedCabinet.socialMedia).some(Boolean) && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Redes Sociais</h3>
-                  <div className="space-y-2">
-                    {selectedCabinet.socialMedia.facebook && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-600 w-20">Facebook:</span>
-                        <a href={selectedCabinet.socialMedia.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          {selectedCabinet.socialMedia.facebook}
-                        </a>
-                      </div>
-                    )}
-                    {selectedCabinet.socialMedia.instagram && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-600 w-20">Instagram:</span>
-                        <a href={selectedCabinet.socialMedia.instagram} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          {selectedCabinet.socialMedia.instagram}
-                        </a>
-                      </div>
-                    )}
-                    {selectedCabinet.socialMedia.tiktok && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-600 w-20">TikTok:</span>
-                        <a href={selectedCabinet.socialMedia.tiktok} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          {selectedCabinet.socialMedia.tiktok}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </DialogContent>
@@ -1428,12 +1335,7 @@ const CabinetManagementPage: React.FC = () => {
                       {selectedCabinetForDelete.name}
                     </span>
                   </div>
-                  <div className="text-sm text-red-700">
-                    Vereador(a): {selectedCabinetForDelete.councilMemberName}
-                  </div>
-                  <div className="text-sm text-red-700">
-                    Município: {selectedCabinetForDelete.municipality}
-                  </div>
+
                 </div>
               )}
               

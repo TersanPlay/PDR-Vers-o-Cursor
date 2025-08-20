@@ -50,19 +50,6 @@ export const AdminUserSection: React.FC<AdminUserSectionProps> = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Telefone
-          </label>
-          <input
-            type="tel"
-            value={formData.adminPhone || ''}
-            onChange={(e) => onInputChange('adminPhone', e.target.value)}
-            placeholder="(11) 99999-9999"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
             E-mail (será usado para login) *
           </label>
           <input

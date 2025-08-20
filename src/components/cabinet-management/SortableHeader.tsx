@@ -2,7 +2,7 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
-type SortField = 'name' | 'councilor' | 'status' | 'createdAt'
+type SortField = 'name' | 'status' | 'registrationDate'
 type SortDirection = 'asc' | 'desc'
 
 interface SortableHeaderProps {

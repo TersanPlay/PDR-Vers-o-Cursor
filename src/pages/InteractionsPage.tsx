@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { usePermissions } from '../contexts/AuthContext'
 import { Button } from '../components/ui/button'
-// Removed unused Card import
+
 import { Plus, MessageSquare } from 'lucide-react'
 import { Interaction, InteractionType, InteractionStatus, Person } from '../types'
 import { toast } from '../components/ui/use-toast'

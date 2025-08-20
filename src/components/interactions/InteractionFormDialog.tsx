@@ -10,7 +10,6 @@ import {
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
-// Remove unused import since Textarea is not used in this component
 import {
   Select,
   SelectContent,

@@ -13,8 +13,7 @@ import {
   Edit,
   Trash2,
   Mail,
-  Phone,
-  Globe,
+
   MapPin,
   User,
   MessageSquare,
@@ -108,19 +107,7 @@ export const CabinetCards: React.FC<CabinetCardsProps> = ({
                 </div>
               )}
               
-              {cabinet.institutionalPhone && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                  <span className="break-words">{cabinet.institutionalPhone}</span>
-                </div>
-              )}
-              
-              {cabinet.website && (
-                <div className="flex items-start gap-2 text-sm text-gray-600">
-                  <Globe className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                  <span className="break-words">{cabinet.website}</span>
-                </div>
-              )}
+
             </div>
 
             {/* Data de Criação */}
